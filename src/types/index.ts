@@ -21,7 +21,7 @@ export interface Completion {
   count: number
 }
 
-export type ViewType = 'day' | 'week' | 'month' | 'year'
+export type ViewType = 'day' | 'week' | 'month' | 'year' | 'rewards'
 
 export const CATEGORIES = ['Fitness', 'Nutrition', 'Skincare', 'Supplements'] as const
 export type Category = (typeof CATEGORIES)[number]

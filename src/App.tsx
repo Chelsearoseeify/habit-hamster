@@ -1,28 +1,50 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Button } from '@/components/ui/button'
 import { RoutineForm } from '@/components/routines/RoutineForm'
 import { DayView } from '@/components/views/DayView'
 import { WeekView } from '@/components/views/WeekView'
 import { MonthView } from '@/components/views/MonthView'
 import { YearView } from '@/components/views/YearView'
+import { LevelCard } from '@/components/gamification/LevelCard'
+import { AchievementsPanel } from '@/components/gamification/AchievementsPanel'
+import { NotificationSettings } from '@/components/notifications/NotificationSettings'
 import { useRoutines } from '@/hooks/useRoutines'
 import { useCompletions } from '@/hooks/useCompletions'
 import { useStats } from '@/hooks/useStats'
+import { useGamification } from '@/hooks/useGamification'
 import { getToday } from '@/lib/date-utils'
+import { scheduleNotifications, areNotificationsEnabled } from '@/lib/notifications'
 import type { ViewType } from '@/types'
-import { Flame, Target, TrendingUp } from 'lucide-react'
+import { Flame, Target, Trophy, X } from 'lucide-react'
 
 function App() {
   const [view, setView] = useState<ViewType>('day')
   const [selectedDate, setSelectedDate] = useState(getToday())
+  const [notificationsEnabled, setNotificationsEnabled] = useState(areNotificationsEnabled)
 
   const { routines, addRoutine, deleteRoutine, getRoutinesByCategory } = useRoutines()
   const { completions, toggleCompletion } = useCompletions()
   const { todayStats, streak } = useStats(routines, completions)
 
+  const {
+    state: gamification,
+    newAchievement,
+    levelUp,
+    dismissAchievement,
+    dismissLevelUp,
+    onCompletionToggled,
+  } = useGamification(completions, routines, streak, todayStats.percentage)
+
   const handleToggle = (routineId: string, maxCount: number) => {
+    const existing = completions.find(
+      (c) => c.routineId === routineId && c.date === selectedDate
+    )
+    const currentCount = existing?.count ?? 0
+    const wasCompleted = currentCount < maxCount
     toggleCompletion(routineId, selectedDate, maxCount)
+    onCompletionToggled(wasCompleted)
   }
 
   const handleCellClick = (_routineId: string, date: string) => {
@@ -32,15 +54,74 @@ function App() {
 
   const routinesByCategory = getRoutinesByCategory()
 
+  // Schedule notifications whenever routines or completion state changes
+  const reschedule = useCallback(() => {
+    if (notificationsEnabled) {
+      scheduleNotifications(routines, todayStats.total, todayStats.completed)
+    }
+  }, [notificationsEnabled, routines, todayStats.total, todayStats.completed])
+
+  useEffect(() => { reschedule() }, [reschedule])
+
+  // Auto-dismiss celebrations after 4 seconds
+  useEffect(() => {
+    if (newAchievement) {
+      const t = setTimeout(dismissAchievement, 4000)
+      return () => clearTimeout(t)
+    }
+  }, [newAchievement, dismissAchievement])
+
+  useEffect(() => {
+    if (levelUp) {
+      const t = setTimeout(dismissLevelUp, 4000)
+      return () => clearTimeout(t)
+    }
+  }, [levelUp, dismissLevelUp])
+
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-4xl mx-auto space-y-6">
+
+        {/* Level-up banner */}
+        {levelUp && (
+          <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-xl border border-primary/40 bg-primary/10 px-5 py-3 shadow-lg backdrop-blur-sm">
+            <span className="text-xl">🎉</span>
+            <div>
+              <p className="font-semibold text-sm">Level Up!</p>
+              <p className="text-xs text-muted-foreground">You reached level {gamification.level}</p>
+            </div>
+            <Button variant="ghost" size="icon" className="h-6 w-6 ml-2" onClick={dismissLevelUp}>
+              <X className="h-3 w-3" />
+            </Button>
+          </div>
+        )}
+
+        {/* Achievement unlocked banner */}
+        {newAchievement && (
+          <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 rounded-xl border border-yellow-400/40 bg-yellow-50 dark:bg-yellow-900/20 px-5 py-3 shadow-lg backdrop-blur-sm">
+            <span className="text-xl">🏆</span>
+            <div>
+              <p className="font-semibold text-sm">{newAchievement.name}</p>
+              <p className="text-xs text-muted-foreground">{newAchievement.description}</p>
+            </div>
+            <Button variant="ghost" size="icon" className="h-6 w-6 ml-2" onClick={dismissAchievement}>
+              <X className="h-3 w-3" />
+            </Button>
+          </div>
+        )}
+
         <header className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold">Habit Hamster</h1>
             <p className="text-sm text-muted-foreground">Track your daily routines</p>
           </div>
-          <RoutineForm onSubmit={addRoutine} />
+          <div className="flex items-center gap-1">
+            <NotificationSettings onEnabledChange={(enabled) => {
+              setNotificationsEnabled(enabled)
+              if (enabled) scheduleNotifications(routines, todayStats.total, todayStats.completed)
+            }} />
+            <RoutineForm onSubmit={addRoutine} />
+          </div>
         </header>
 
         <div className="grid grid-cols-3 gap-2 sm:gap-4">
@@ -72,26 +153,19 @@ function App() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                <TrendingUp className="h-4 w-4" />
-                Routines
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{routines.length}</div>
-              <p className="text-xs text-muted-foreground">active</p>
-            </CardContent>
-          </Card>
+          <LevelCard level={gamification.level} xp={gamification.xp} />
         </div>
 
         <Tabs value={view} onValueChange={(v) => setView(v as ViewType)}>
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="day">Day</TabsTrigger>
             <TabsTrigger value="week">Week</TabsTrigger>
             <TabsTrigger value="month">Month</TabsTrigger>
             <TabsTrigger value="year">Year</TabsTrigger>
+            <TabsTrigger value="rewards" className="flex items-center gap-1">
+              <Trophy className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Rewards</span>
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="day" className="mt-4">
@@ -141,6 +215,25 @@ function App() {
                   completions={completions}
                   onCellClick={handleCellClick}
                 />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="rewards" className="mt-4">
+            <Card>
+              <CardContent className="pt-6">
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="font-semibold mb-1">Level {gamification.level}</h3>
+                    <p className="text-sm text-muted-foreground">
+                      {gamification.xp} XP total · {gamification.achievements.length} / 9 achievements unlocked
+                    </p>
+                  </div>
+                  <div>
+                    <h3 className="font-semibold mb-3">Achievements</h3>
+                    <AchievementsPanel unlockedAchievements={gamification.achievements} />
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>

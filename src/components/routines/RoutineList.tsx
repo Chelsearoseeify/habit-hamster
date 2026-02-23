@@ -30,7 +30,7 @@ export function RoutineList({
   const dayOfWeek = getDayOfWeek(parseDate(date))
 
   const allRoutines = Object.values(routinesByCategory).flat()
-    .filter((r) => !r.preferredDays || r.preferredDays.includes(dayOfWeek))
+    .filter((r) => !r.paused && (!r.preferredDays || r.preferredDays.includes(dayOfWeek)))
     .sort((a, b) => {
       const aTime = a.timeRange?.start ?? ''
       const bTime = b.timeRange?.start ?? ''

@@ -11,7 +11,7 @@ export function useStats(routines: Routine[], completions: Completion[]) {
     const days = getDaysInRange(yearStart, today)
 
     for (const date of days) {
-      const dueRoutines = routines.filter((r) => isRoutineDueOnDate(r.frequency, date))
+      const dueRoutines = routines.filter((r) => isRoutineDueOnDate(r, date, completions))
       if (dueRoutines.length === 0) {
         data[date] = 0
         continue
@@ -37,7 +37,7 @@ export function useStats(routines: Routine[], completions: Completion[]) {
 
   const todayStats = useMemo(() => {
     const today = formatDate(new Date())
-    const dueRoutines = routines.filter((r) => isRoutineDueOnDate(r.frequency, today))
+    const dueRoutines = routines.filter((r) => isRoutineDueOnDate(r, today, completions))
 
     let totalExpected = 0
     let totalCompleted = 0
@@ -75,7 +75,7 @@ export function useStats(routines: Routine[], completions: Completion[]) {
     while (daysChecked < maxDays) {
       daysChecked++
       const dateStr = formatDate(checkDate)
-      const dueRoutines = routines.filter((r) => isRoutineDueOnDate(r.frequency, dateStr))
+      const dueRoutines = routines.filter((r) => isRoutineDueOnDate(r, dateStr, completions))
 
       if (dueRoutines.length === 0) {
         checkDate.setDate(checkDate.getDate() - 1)

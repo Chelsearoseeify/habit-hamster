@@ -125,7 +125,7 @@ export function getNewlyUnlockedAchievements(
       const d = new Date(today);
       d.setDate(d.getDate() - i);
       const dateStr = formatDate(d);
-      const due = routines.filter((r) => isRoutineDueOnDate(r.frequency, dateStr));
+      const due = routines.filter((r) => isRoutineDueOnDate(r, dateStr, completions));
       if (due.length === 0) continue;
       const allDone = due.every((r) => {
         const c = completions.find((c) => c.routineId === r.id && c.date === dateStr);
@@ -145,7 +145,7 @@ export function getNewlyUnlockedAchievements(
       start.setDate(start.getDate() - 29);
       const days = getDaysInRange(start, today);
       const allGood = days.every((dateStr) => {
-        const due = supplementRoutines.filter((r) => isRoutineDueOnDate(r.frequency, dateStr));
+        const due = supplementRoutines.filter((r) => isRoutineDueOnDate(r, dateStr, completions));
         return due.every((r) => {
           const c = completions.find((c) => c.routineId === r.id && c.date === dateStr);
           return (c?.count ?? 0) >= getMaxCountForRoutine(r);
@@ -175,7 +175,7 @@ export function getNewlyUnlockedAchievements(
       start.setDate(start.getDate() - 29);
       const days = getDaysInRange(start, today);
       const allGood = days.every((dateStr) => {
-        const due = skincareRoutines.filter((r) => isRoutineDueOnDate(r.frequency, dateStr));
+        const due = skincareRoutines.filter((r) => isRoutineDueOnDate(r, dateStr, completions));
         return due.every((r) => {
           const c = completions.find((c) => c.routineId === r.id && c.date === dateStr);
           return (c?.count ?? 0) >= getMaxCountForRoutine(r);

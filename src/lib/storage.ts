@@ -32,6 +32,7 @@ const DEFAULT_ROUTINES: Omit<Routine, "id" | "createdAt">[] = [
     name: "Meal prep",
     category: "Nutrition",
     frequency: { type: "weekly", timesPerWeek: 1 },
+    preferredDays: [7],
     timeRange: { start: "11:00", end: "13:00" },
   },
   {
@@ -69,6 +70,7 @@ const DEFAULT_ROUTINES: Omit<Routine, "id" | "createdAt">[] = [
     name: "Hair dye - root",
     category: "Skincare",
     frequency: { type: "interval", days: 45 },
+    preferredDays: [6],
   },
   {
     name: "Bromelina",

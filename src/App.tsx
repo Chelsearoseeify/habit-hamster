@@ -7,6 +7,7 @@ import { DayView } from '@/components/views/DayView'
 import { WeekView } from '@/components/views/WeekView'
 import { MonthView } from '@/components/views/MonthView'
 import { YearView } from '@/components/views/YearView'
+import { RoutinesView } from '@/components/views/RoutinesView'
 import { LevelCard } from '@/components/gamification/LevelCard'
 import { AchievementsPanel } from '@/components/gamification/AchievementsPanel'
 import { NotificationSettings } from '@/components/notifications/NotificationSettings'
@@ -17,14 +18,14 @@ import { useGamification } from '@/hooks/useGamification'
 import { getToday } from '@/lib/date-utils'
 import { scheduleNotifications, areNotificationsEnabled } from '@/lib/notifications'
 import type { ViewType } from '@/types'
-import { Flame, Target, Trophy, X } from 'lucide-react'
+import { Flame, Target, Trophy, X, List } from 'lucide-react'
 
 function App() {
   const [view, setView] = useState<ViewType>('day')
   const [selectedDate, setSelectedDate] = useState(getToday())
   const [notificationsEnabled, setNotificationsEnabled] = useState(areNotificationsEnabled)
 
-  const { routines, addRoutine, deleteRoutine, getRoutinesByCategory } = useRoutines()
+  const { routines, addRoutine, updateRoutine, deleteRoutine, getRoutinesByCategory } = useRoutines()
   const { completions, toggleCompletion } = useCompletions()
   const { todayStats, streak } = useStats(routines, completions)
 
@@ -157,14 +158,18 @@ function App() {
         </div>
 
         <Tabs value={view} onValueChange={(v) => setView(v as ViewType)}>
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className="grid w-full grid-cols-6">
             <TabsTrigger value="day">Day</TabsTrigger>
             <TabsTrigger value="week">Week</TabsTrigger>
             <TabsTrigger value="month">Month</TabsTrigger>
             <TabsTrigger value="year">Year</TabsTrigger>
-            <TabsTrigger value="rewards" className="flex items-center gap-1">
+            <TabsTrigger value="routines" className="flex items-center justify-center gap-1">
+              <List className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">All</span>
+            </TabsTrigger>
+            <TabsTrigger value="rewards" className="flex items-center justify-center gap-1">
               <Trophy className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Rewards</span>
+              <span className="hidden sm:inline">XP</span>
             </TabsTrigger>
           </TabsList>
 
@@ -214,6 +219,19 @@ function App() {
                   routines={routines}
                   completions={completions}
                   onCellClick={handleCellClick}
+                />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="routines" className="mt-4">
+            <Card>
+              <CardContent className="pt-6">
+                <RoutinesView
+                  routines={routines}
+                  completions={completions}
+                  onDelete={deleteRoutine}
+                  onEdit={(data, id) => updateRoutine(id, data)}
                 />
               </CardContent>
             </Card>

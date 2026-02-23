@@ -13,6 +13,7 @@ export interface Routine {
   preferredDays?: number[]
   description?: string
   createdAt: string
+  paused?: boolean
 }
 
 export interface Completion {

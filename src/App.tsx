@@ -232,6 +232,7 @@ function App() {
                   completions={completions}
                   onDelete={deleteRoutine}
                   onEdit={(data, id) => updateRoutine(id, data)}
+                  onPause={(id, paused) => updateRoutine(id, { paused })}
                 />
               </CardContent>
             </Card>

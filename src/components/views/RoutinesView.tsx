@@ -1,7 +1,7 @@
 import type { Routine, Completion } from '@/types'
 import { RoutineForm } from '@/components/routines/RoutineForm'
 import { Button } from '@/components/ui/button'
-import { Pencil, Trash2 } from 'lucide-react'
+import { Pencil, Trash2, Pause, Play } from 'lucide-react'
 import { addDays, formatDate, getDayOfWeek, parseDate } from '@/lib/date-utils'
 
 const WEEKDAY_NAMES = ['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
@@ -12,6 +12,7 @@ interface RoutinesViewProps {
   completions: Completion[]
   onDelete: (id: string) => void
   onEdit: (routine: Omit<Routine, 'id' | 'createdAt'>, id: string) => void
+  onPause: (id: string, paused: boolean) => void
 }
 
 function formatFrequency(routine: Routine): string {
@@ -128,7 +129,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   Supplements: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',
 }
 
-export function RoutinesView({ routines, completions, onDelete, onEdit }: RoutinesViewProps) {
+export function RoutinesView({ routines, completions, onDelete, onEdit, onPause }: RoutinesViewProps) {
   if (routines.length === 0) {
     return (
       <div className="text-center py-12 text-muted-foreground">
@@ -157,7 +158,7 @@ export function RoutinesView({ routines, completions, onDelete, onEdit }: Routin
               const colorClass = CATEGORY_COLORS[routine.category] ?? 'bg-muted text-muted-foreground'
 
               return (
-                <div key={routine.id} className="flex items-center gap-3 px-4 py-3 bg-card hover:bg-muted/40 transition-colors">
+                <div key={routine.id} className={`flex items-center gap-3 px-4 py-3 bg-card hover:bg-muted/40 transition-colors ${routine.paused ? 'opacity-60' : ''}`}>
                   {/* Category dot */}
                   <span className={`shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full ${colorClass}`}>
                     {routine.category}
@@ -187,14 +188,31 @@ export function RoutinesView({ routines, completions, onDelete, onEdit }: Routin
                     </div>
                   </div>
 
-                  {/* Next due badge */}
-                  <span className={`shrink-0 text-xs font-medium px-2 py-0.5 rounded-full ${
-                    urgent
-                      ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300'
-                      : 'bg-muted text-muted-foreground'
-                  }`}>
-                    {dueLabel}
-                  </span>
+                  {/* Next due badge or paused badge */}
+                  {routine.paused ? (
+                    <span className="shrink-0 text-xs font-medium px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+                      Paused
+                    </span>
+                  ) : (
+                    <span className={`shrink-0 text-xs font-medium px-2 py-0.5 rounded-full ${
+                      urgent
+                        ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300'
+                        : 'bg-muted text-muted-foreground'
+                    }`}>
+                      {dueLabel}
+                    </span>
+                  )}
+
+                  {/* Pause / Resume */}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="shrink-0 h-8 w-8 text-muted-foreground hover:text-foreground"
+                    onClick={() => onPause(routine.id, !routine.paused)}
+                    title={routine.paused ? 'Resume routine' : 'Pause routine'}
+                  >
+                    {routine.paused ? <Play className="h-3.5 w-3.5" /> : <Pause className="h-3.5 w-3.5" />}
+                  </Button>
 
                   {/* Edit */}
                   <RoutineForm

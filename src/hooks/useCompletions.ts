@@ -104,10 +104,11 @@ export function getExpectedCount(frequency: FrequencyType, date: string): number
  * For all other frequency types `completions` is not used.
  */
 export function isRoutineDueOnDate(
-  routine: Pick<Routine, 'id' | 'frequency' | 'preferredDays'>,
+  routine: Pick<Routine, 'id' | 'frequency' | 'preferredDays' | 'paused'>,
   date: string,
   completions: Completion[] = []
 ): boolean {
+  if (routine.paused) return false
   const { frequency } = routine
   const d = parseDate(date)
   const dayOfWeek = getDayOfWeek(d)

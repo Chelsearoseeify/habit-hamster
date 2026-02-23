@@ -7,7 +7,7 @@ export function useCompletions() {
   const [completions, setCompletions] = useState<Completion[]>([])
 
   useEffect(() => {
-    setCompletions(getCompletions())
+    getCompletions().then(setCompletions)
   }, [])
 
   const getCompletion = useCallback(

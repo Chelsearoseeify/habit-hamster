@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import type { Achievement, Completion, GamificationState, Routine } from "@/types";
-import { getGamificationState, saveGamificationState } from "@/lib/storage";
+import { getGamificationState, saveGamificationState, getPerfectDayBonus, setPerfectDayBonus } from "@/lib/storage";
 import {
   calculateLevel,
   XP_PER_COMPLETION,
@@ -11,15 +11,22 @@ import {
   type AchievementCheckContext,
 } from "@/lib/gamification";
 
+const DEFAULT_STATE: GamificationState = { xp: 0, level: 1, achievements: [], streakFreezes: 0 };
+
 export function useGamification(
   completions: Completion[],
   routines: Routine[],
   streak: number,
   todayPercentage: number
 ) {
-  const [state, setState] = useState<GamificationState>(() => getGamificationState());
+  const [state, setState] = useState<GamificationState>(DEFAULT_STATE);
   const [newAchievement, setNewAchievement] = useState<Achievement | null>(null);
   const [levelUp, setLevelUp] = useState(false);
+
+  // Load gamification state async on mount
+  useEffect(() => {
+    getGamificationState().then(setState);
+  }, []);
 
   // Track previous streak to detect milestone crossings
   const prevStreakRef = useRef(streak);
@@ -89,13 +96,14 @@ export function useGamification(
         awardXP(XP_PER_COMPLETION);
       }
       if (todayPercentage === 100) {
-        // Award perfect day bonus once per day
+        // Award perfect day bonus once per day (async, fire-and-forget)
         const today = new Date().toISOString().slice(0, 10);
-        const bonusKey = `habit-hamster-perfect-bonus-${today}`;
-        if (!localStorage.getItem(bonusKey)) {
-          localStorage.setItem(bonusKey, "1");
-          awardXP(XP_PERFECT_DAY_BONUS);
-        }
+        getPerfectDayBonus(today).then((alreadyAwarded) => {
+          if (!alreadyAwarded) {
+            setPerfectDayBonus(today);
+            awardXP(XP_PERFECT_DAY_BONUS);
+          }
+        });
       }
       checkAchievements({
         completions,

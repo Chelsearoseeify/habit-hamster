@@ -6,7 +6,7 @@ export function useRoutines() {
   const [routines, setRoutines] = useState<Routine[]>([])
 
   useEffect(() => {
-    setRoutines(getRoutines())
+    getRoutines().then(setRoutines)
   }, [])
 
   const addRoutine = useCallback((routine: Omit<Routine, 'id' | 'createdAt'>) => {

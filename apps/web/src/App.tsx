@@ -9,6 +9,7 @@ import { WeekView } from '@/components/views/WeekView'
 import { MonthView } from '@/components/views/MonthView'
 import { YearView } from '@/components/views/YearView'
 import { RoutinesView } from '@/components/views/RoutinesView'
+import { ReviewView } from '@/components/views/ReviewView'
 import { IdentityManager } from '@/components/identity/IdentityManager'
 import { SystemManager } from '@/components/systems/SystemManager'
 import { LevelCard } from '@/components/gamification/LevelCard'
@@ -24,7 +25,7 @@ import { useReflections } from '@/hooks/useReflections'
 import { useConsistency } from '@/hooks/useConsistency'
 import { getToday } from '@/lib/date-utils'
 import type { ViewType } from '@/types'
-import { Flame, Target, Trophy, X, List, ChevronLeft, CalendarCheck } from 'lucide-react'
+import { Flame, Target, Trophy, X, List, ChevronLeft, CalendarCheck, Sparkles } from 'lucide-react'
 
 function App() {
   const [view, setView] = useState<ViewType>('now')
@@ -34,7 +35,7 @@ function App() {
   const { todayStats, streak } = useStats(routines, completions)
   const { identities, addIdentity, deleteIdentity } = useIdentities()
   const { systems, addSystem, deleteSystem } = useSystems()
-  const { getReflectionForDate, setReflection } = useReflections()
+  const { reflections, getReflectionForDate, setReflection } = useReflections()
   const consistency = useConsistency(routines, completions)
 
   const {
@@ -201,11 +202,15 @@ function App() {
             </div>
 
             <Tabs value={view} onValueChange={(v) => setView(v as ViewType)}>
-              <TabsList className="grid w-full grid-cols-6">
+              <TabsList className="grid w-full grid-cols-7">
                 <TabsTrigger value="day">Day</TabsTrigger>
                 <TabsTrigger value="week">Week</TabsTrigger>
                 <TabsTrigger value="month">Month</TabsTrigger>
                 <TabsTrigger value="year">Year</TabsTrigger>
+                <TabsTrigger value="review" className="flex items-center justify-center gap-1">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Review</span>
+                </TabsTrigger>
                 <TabsTrigger value="routines" className="flex items-center justify-center gap-1">
                   <List className="h-3.5 w-3.5" />
                   <span className="hidden sm:inline">All</span>
@@ -262,6 +267,19 @@ function App() {
                       routines={routines}
                       completions={completions}
                       onCellClick={handleCellClick}
+                    />
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="review" className="mt-4">
+                <Card>
+                  <CardContent className="pt-6">
+                    <ReviewView
+                      routines={routines}
+                      completions={completions}
+                      reflections={reflections}
+                      identities={identities}
                     />
                   </CardContent>
                 </Card>

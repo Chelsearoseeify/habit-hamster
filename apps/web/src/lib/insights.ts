@@ -1,6 +1,13 @@
-import type { Routine, Completion } from '@/types'
+import type { Routine, Completion, Reflection, Identity, Mood } from '@/types'
 import { getMaxCountForRoutine, isRoutineDueOnDate } from '@/hooks/useCompletions'
-import { addDays, getDayOfWeek, getDaysInRange, getWeekStart, parseDate } from '@/lib/date-utils'
+import {
+  addDays,
+  getDayOfWeek,
+  getDaysInRange,
+  getMonthStart,
+  getWeekStart,
+  parseDate,
+} from '@/lib/date-utils'
 
 const WEEKDAY_FULL = ['', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
@@ -111,4 +118,131 @@ export function generateInsights(routines: Routine[], completions: Completion[])
   }
 
   return insights.slice(0, 3)
+}
+
+export type ReviewPeriod = 'week' | 'month'
+
+export interface Review {
+  period: ReviewPeriod
+  label: string
+  completionRate: number
+  activeDays: number
+  totalDays: number
+  moodCounts: Record<Mood, number>
+  moodSummary: string | null
+  strongestBlock: string | null
+  topIdentity: { name: string; votes: number } | null
+  note: string
+}
+
+const MONTH_NAMES = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December',
+]
+
+/**
+ * Reflection (principle 10): a calm weekly/monthly review that interprets the
+ * period instead of dumping numbers. Understand yourself, not collect data.
+ */
+export function generateReview(
+  period: ReviewPeriod,
+  routines: Routine[],
+  completions: Completion[],
+  reflections: Reflection[],
+  identities: Identity[]
+): Review {
+  const today = new Date()
+  const start = period === 'week' ? addDays(today, -6) : getMonthStart(today)
+  const days = getDaysInRange(start, today)
+  const dayset = new Set(days)
+  const label = period === 'week' ? 'This week' : MONTH_NAMES[today.getMonth()]
+
+  const completionFor = (routineId: string, date: string) =>
+    completions.find((c) => c.routineId === routineId && c.date === date)
+
+  // Overall completion rate + time-of-day strength.
+  const overall: Bucket = { met: 0, expected: 0 }
+  const timeBuckets: Record<'Morning' | 'Afternoon' | 'Evening', Bucket> = {
+    Morning: { met: 0, expected: 0 },
+    Afternoon: { met: 0, expected: 0 },
+    Evening: { met: 0, expected: 0 },
+  }
+  for (const routine of routines) {
+    const maxCount = getMaxCountForRoutine(routine)
+    const rStart = routine.timeRange?.start
+    const hour = rStart ? Number(rStart.split(':')[0]) : null
+    const block =
+      hour === null || Number.isNaN(hour)
+        ? null
+        : hour < 12 ? 'Morning' : hour < 17 ? 'Afternoon' : 'Evening'
+    for (const date of days) {
+      if (!isRoutineDueOnDate(routine, date, completions)) continue
+      const done = (completionFor(routine.id, date)?.count ?? 0) >= maxCount
+      overall.expected++
+      if (done) overall.met++
+      if (block) {
+        timeBuckets[block].expected++
+        if (done) timeBuckets[block].met++
+      }
+    }
+  }
+
+  const strongest = (Object.entries(timeBuckets) as [string, Bucket][])
+    .filter(([, b]) => b.expected >= (period === 'week' ? 3 : 8))
+    .sort((a, b) => rate(b[1]) - rate(a[1]))[0]
+  const strongestBlock = strongest && rate(strongest[1]) >= 50 ? strongest[0] : null
+
+  // Active days.
+  const activeDates = new Set(completions.filter((c) => c.count > 0 && dayset.has(c.date)).map((c) => c.date))
+  const activeDays = activeDates.size
+
+  // Mood summary.
+  const moodCounts: Record<Mood, number> = { good: 0, neutral: 0, bad: 0 }
+  for (const r of reflections) {
+    if (dayset.has(r.date)) moodCounts[r.mood]++
+  }
+  const moodTotal = moodCounts.good + moodCounts.neutral + moodCounts.bad
+  let moodSummary: string | null = null
+  if (moodTotal >= (period === 'week' ? 2 : 4)) {
+    const top = (Object.entries(moodCounts) as [Mood, number][]).sort((a, b) => b[1] - a[1])[0][0]
+    moodSummary =
+      top === 'good' ? 'Mostly good days.' : top === 'bad' ? 'A heavy stretch.' : 'A steady, even mood.'
+  }
+
+  // Top identity by votes within the window.
+  let topIdentity: { name: string; votes: number } | null = null
+  for (const identity of identities) {
+    const routineIds = new Set(routines.filter((r) => r.identityId === identity.id).map((r) => r.id))
+    if (routineIds.size === 0) continue
+    const votes = completions.reduce(
+      (sum, c) => (routineIds.has(c.routineId) && dayset.has(c.date) ? sum + c.count : sum),
+      0
+    )
+    if (votes > 0 && (!topIdentity || votes > topIdentity.votes)) {
+      topIdentity = { name: identity.name, votes }
+    }
+  }
+
+  const completionRate = rate(overall)
+  const note =
+    completionRate >= 75
+      ? 'A strong stretch — trust the system.'
+      : completionRate >= 40
+        ? 'Steady progress. Consistency over perfection.'
+        : activeDays > 0
+          ? 'A quiet spell. Showing up at all still counts.'
+          : 'A fresh start whenever you are ready.'
+
+  return {
+    period,
+    label,
+    completionRate,
+    activeDays,
+    totalDays: days.length,
+    moodCounts,
+    moodSummary,
+    strongestBlock,
+    topIdentity,
+    note,
+  }
 }

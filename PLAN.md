@@ -19,7 +19,7 @@ below on completion.
 | 7 | Reduce friction | ✅ | one-tap Done, big target, no dialog |
 | 8 | Immediate reward | ✅ | `now-enter`/`check-pop` anim, count-up, haptic (Phase 2) |
 | 9 | Consistency over perfection | ✅ | `useConsistency`, monthly % |
-| 10 | Reflection | ⚠️ | daily mood done; no weekly/monthly review |
+| 10 | Reflection | ✅ | daily mood + `ReviewView` weekly/monthly (Phase 5) |
 | 11 | Insights over statistics | ✅ | `generateInsights` surfaced in Now |
 | 12 | Calm productivity | ✅ | tone throughout |
 
@@ -87,27 +87,24 @@ names (no Routine→Habit rename); docs note code `Routine` = vision's `Habit`.
   optional "serves identity" link), RoutineForm system picker, Now shows
   "Part of your <system> — trust the system." under the next action.
 
-**⚠️ DB migration required** (Turso not auto-migrated). Run once:
-```sql
-CREATE TABLE IF NOT EXISTS systems (
-  id TEXT PRIMARY KEY, name TEXT NOT NULL, description TEXT,
-  identity_id TEXT REFERENCES identities(id) ON DELETE SET NULL,
-  created_at TEXT NOT NULL
-);
-ALTER TABLE routines ADD COLUMN system_id TEXT REFERENCES systems(id) ON DELETE SET NULL;
-```
+**DB migration:** ✅ applied to Turso `habit-hamster` (systems table + routines
+.system_id). The SQL also lives in `apps/api/src/schema.sql` for fresh setups.
 
 ---
 
-## ⏳ Phase 5 — Weekly & Monthly Review (principle 10)
+## ✅ Phase 5 — Weekly & Monthly Review (principle 10, shipped)
 
-Turn accumulated reflections + completions into a calm periodic review.
+Calm periodic review that interprets the window — no charts, no guilt.
 
-- Weekly review: mood trend, most-voted identity, strongest block, one gentle note.
-- Monthly review: consistency, reliability, identity progress.
-- Lives behind disclosure; reuses `generateInsights` + `useConsistency`.
+- `insights.ts`: `generateReview(period, routines, completions, reflections,
+  identities)` → completion rate, active days, strongest time-of-day block,
+  top identity by windowed votes, mood summary, one gentle note.
+- `ReviewView`: Weekly/Monthly toggle; big % + active days; strongest block,
+  top identity, mood line; calm closing note.
+- Wired as a "Review" tab (behind the "More & stats" disclosure); `useReflections`
+  now exposes the `reflections` list.
 
-**Files:** `insights.ts`, a `ReviewView`, hook wiring.
+**Files:** `lib/insights.ts`, `views/ReviewView.tsx`, `App.tsx`, `types` (ViewType).
 
 ---
 

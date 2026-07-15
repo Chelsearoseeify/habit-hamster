@@ -118,6 +118,33 @@ RoutineForm, and a checklist for adding new components.
 
 ---
 
+## ✅ Phase 7 — Systems as rules / equivalence (principle 3, deepened)
+
+Reframe: a **System is a rule, not a folder.** It's satisfied when ≥ `ruleCount`
+of its member routines are completed within `rulePeriod` (day/week). Members are
+equivalent ways to satisfy it ("move once today" — Gym OR Run OR Yoga); doing one
+is enough, the rest become optional. This is the to-do-list → behaviour-OS shift.
+
+Decisions: rule = "complete N per period" (N default 1); the system rule governs
+its members (their own frequency is ignored in Now); when satisfied, alternatives
+stay visible but faded/optional.
+
+- `System` gains `ruleCount` + `rulePeriod` (schema cols, migrated live).
+- `lib/systems.ts`: `systemMembers`, `systemStatus` (done/target/satisfied +
+  per-member done set), `ruleText`.
+- `NowView`: member routines are pulled OUT of the standalone block flow and
+  represented by one `SystemNowCard` each (pick any member → satisfied → ✨ +
+  faded options). Standalone routines keep time-of-day chunking.
+- `SystemManager`: rule inputs (complete N per day/week) in add + edit.
+
+**Deferred (v2):** weighted attribute targets (Gym = Movement+++/Strength++,
+"Movement 100%" reached via combos).
+
+**Files:** `packages/types`, `apps/api` (schema/db/systems router), `lib/systems.ts`,
+`components/systems/SystemNowCard.tsx`, `views/NowView.tsx`, `SystemManager.tsx`.
+
+---
+
 ## Open decision — data-model naming (blocks Phase 4, touches Phase 3)
 
 The vision hierarchy is `Identity → System → Routine → Habit → Completion`. The

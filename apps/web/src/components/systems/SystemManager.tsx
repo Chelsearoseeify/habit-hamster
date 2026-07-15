@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { System, Identity, Routine } from '@/types'
+import type { System, Identity, Routine, SystemRulePeriod } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -34,11 +34,15 @@ export function SystemManager({ systems, identities, routines, onAdd, onEdit, on
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [identityId, setIdentityId] = useState<string>(NO_IDENTITY)
+  const [ruleCount, setRuleCount] = useState(1)
+  const [rulePeriod, setRulePeriod] = useState<SystemRulePeriod>('day')
 
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
   const [editDescription, setEditDescription] = useState('')
   const [editIdentityId, setEditIdentityId] = useState<string>(NO_IDENTITY)
+  const [editRuleCount, setEditRuleCount] = useState(1)
+  const [editRulePeriod, setEditRulePeriod] = useState<SystemRulePeriod>('day')
 
   const handleAdd = () => {
     if (!name.trim()) return
@@ -46,10 +50,14 @@ export function SystemManager({ systems, identities, routines, onAdd, onEdit, on
       name: name.trim(),
       description: description.trim() || undefined,
       identityId: identityId === NO_IDENTITY ? null : identityId,
+      ruleCount: Math.max(1, ruleCount),
+      rulePeriod,
     })
     setName('')
     setDescription('')
     setIdentityId(NO_IDENTITY)
+    setRuleCount(1)
+    setRulePeriod('day')
   }
 
   const startEdit = (system: System) => {
@@ -57,6 +65,8 @@ export function SystemManager({ systems, identities, routines, onAdd, onEdit, on
     setEditName(system.name)
     setEditDescription(system.description ?? '')
     setEditIdentityId(system.identityId ?? NO_IDENTITY)
+    setEditRuleCount(system.ruleCount)
+    setEditRulePeriod(system.rulePeriod)
   }
 
   const cancelEdit = () => {
@@ -64,6 +74,8 @@ export function SystemManager({ systems, identities, routines, onAdd, onEdit, on
     setEditName('')
     setEditDescription('')
     setEditIdentityId(NO_IDENTITY)
+    setEditRuleCount(1)
+    setEditRulePeriod('day')
   }
 
   const saveEdit = () => {
@@ -72,6 +84,8 @@ export function SystemManager({ systems, identities, routines, onAdd, onEdit, on
       name: editName.trim(),
       description: editDescription.trim() || undefined,
       identityId: editIdentityId === NO_IDENTITY ? null : editIdentityId,
+      ruleCount: Math.max(1, editRuleCount),
+      rulePeriod: editRulePeriod,
     })
     cancelEdit()
   }
@@ -121,6 +135,26 @@ export function SystemManager({ systems, identities, routines, onAdd, onEdit, on
                           </SelectContent>
                         </Select>
                       )}
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground shrink-0">Complete</span>
+                        <Input
+                          type="number"
+                          min={1}
+                          value={editRuleCount}
+                          onChange={(e) => setEditRuleCount(Number(e.target.value))}
+                          className="w-16"
+                        />
+                        <span className="text-xs text-muted-foreground shrink-0">per</span>
+                        <Select value={editRulePeriod} onValueChange={(v) => setEditRulePeriod(v as SystemRulePeriod)}>
+                          <SelectTrigger className="flex-1">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="day">day</SelectItem>
+                            <SelectItem value="week">week</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
                     <Button
                       variant="ghost"
@@ -184,7 +218,7 @@ export function SystemManager({ systems, identities, routines, onAdd, onEdit, on
                     <p className="text-xs text-muted-foreground truncate">{system.description}</p>
                   )}
                   <p className="text-xs text-muted-foreground/70 mt-0.5">
-                    {linked} routine{linked === 1 ? '' : 's'}
+                    complete {system.ruleCount} / {system.rulePeriod} · {linked} routine{linked === 1 ? '' : 's'}
                     {identity ? ` · serves ${identity.name}` : ''}
                   </p>
                 </div>
@@ -249,6 +283,32 @@ export function SystemManager({ systems, identities, routines, onAdd, onEdit, on
             </Select>
           </div>
         )}
+        <div className="space-y-1">
+          <Label>Rule</Label>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground shrink-0">Complete</span>
+            <Input
+              type="number"
+              min={1}
+              value={ruleCount}
+              onChange={(e) => setRuleCount(Number(e.target.value))}
+              className="w-16"
+            />
+            <span className="text-xs text-muted-foreground shrink-0">per</span>
+            <Select value={rulePeriod} onValueChange={(v) => setRulePeriod(v as SystemRulePeriod)}>
+              <SelectTrigger className="flex-1">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="day">day</SelectItem>
+                <SelectItem value="week">week</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <p className="text-xs text-muted-foreground/70">
+            Any {ruleCount === 1 ? 'one member' : `${ruleCount} members`} satisfies it per {rulePeriod}.
+          </p>
+        </div>
         <Button onClick={handleAdd} className="w-full" disabled={!name.trim()}>
           <Plus className="mr-2 h-4 w-4" />
           Add system

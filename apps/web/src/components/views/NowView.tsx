@@ -8,6 +8,8 @@ import { getMaxCountForRoutine } from '@/hooks/useCompletions'
 import { votesByIdentity } from '@/lib/identity-utils'
 import { formatFrequency } from '@/lib/routine-utils'
 import { buildDayBlocks, currentBlock, type BlockName } from '@/lib/blocks'
+import { systemMembers, systemStatus } from '@/lib/systems'
+import { SystemNowCard } from '@/components/systems/SystemNowCard'
 import { generateInsights } from '@/lib/insights'
 import { getToday } from '@/lib/date-utils'
 import { useReducedMotion } from '@/hooks/useReducedMotion'
@@ -49,16 +51,34 @@ export function NowView({
 }: NowViewProps) {
   const today = getToday()
 
+  // Systems are rules over member routines. Members are represented by their
+  // system card, not as individual next-actions — pull them out of the flow.
+  const activeSystems = useMemo(
+    () => systems.map((s) => ({ system: s, members: systemMembers(s.id, routines) }))
+      .filter((x) => x.members.length > 0),
+    [systems, routines]
+  )
+  const memberIds = useMemo(() => {
+    const set = new Set<string>()
+    for (const { members } of activeSystems) for (const m of members) set.add(m.id)
+    return set
+  }, [activeSystems])
+  const standalone = useMemo(
+    () => routines.filter((r) => !memberIds.has(r.id)),
+    [routines, memberIds]
+  )
+
   // Chunking: reveal one time-of-day block at a time (principle 4).
   const blocks = useMemo(
-    () => buildDayBlocks(routines, completions, today),
-    [routines, completions, today]
+    () => buildDayBlocks(standalone, completions, today),
+    [standalone, completions, today]
   )
   const block = currentBlock(blocks)
   const nextAction = block?.remaining[0] ?? null
-  const nextSystem = nextAction?.systemId
-    ? systems.find((s) => s.id === nextAction.systemId)
-    : undefined
+
+  const anyPendingSystem = activeSystems.some(
+    ({ system, members }) => !systemStatus(system, members, completions).satisfied
+  )
 
   // Calm hand-off when the user clears a block and a later one takes over.
   const [handoff, setHandoff] = useState<{ done: BlockName; next: BlockName } | null>(null)
@@ -107,6 +127,21 @@ export function NowView({
         </div>
       )}
 
+      {activeSystems.length > 0 && (
+        <div className="space-y-3">
+          {activeSystems.map(({ system, members }) => (
+            <SystemNowCard
+              key={system.id}
+              system={system}
+              members={members}
+              completions={completions}
+              onToggle={onToggle}
+              enter={enter}
+            />
+          ))}
+        </div>
+      )}
+
       {handoff && (
         <p className={`text-center text-sm font-medium text-primary ${enter}`}>
           {handoff.done} done — {handoff.next} is next.
@@ -125,19 +160,16 @@ export function NowView({
             onToggle={onToggle}
             enter={enter}
           />
-          {nextSystem && (
-            <p className="text-center text-xs text-muted-foreground/70">
-              Part of your {nextSystem.name} — trust the system.
-            </p>
-          )}
         </div>
       ) : (
-        <Card key="done" className={enter}>
-          <CardContent className="py-8 text-center space-y-1">
-            <p className="text-lg font-medium">You're done for now.</p>
-            <p className="text-sm text-muted-foreground">Nothing else needs you right now. Rest easy.</p>
-          </CardContent>
-        </Card>
+        !anyPendingSystem && (
+          <Card key="done" className={enter}>
+            <CardContent className="py-8 text-center space-y-1">
+              <p className="text-lg font-medium">You're done for now.</p>
+              <p className="text-sm text-muted-foreground">Nothing else needs you right now. Rest easy.</p>
+            </CardContent>
+          </Card>
+        )
       )}
 
       {todayStats.total > 0 && (

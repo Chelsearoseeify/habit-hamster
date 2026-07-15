@@ -62,6 +62,19 @@ to an instant state change under reduced motion.
 - **Animation** — a calm "Morning done — Afternoon is next." line (`now-enter`)
   shows for ~2.6s when a block clears.
 
+## SystemNowCard
+
+`src/components/systems/SystemNowCard.tsx` · `src/lib/systems.ts`
+
+- **Purpose** — present a system as a *rule* to satisfy, not a list to clear.
+- **Principle** — #3 systems over goals; #1 reduce decisions (any one member);
+  #9 consistency (you showed up, however).
+- **Emotion** — "I moved today. The system is honoured." Not "3 tasks left."
+- **Interaction** — shows the rule ("Do any one today") + member alternatives as
+  tappable options; completing any counts toward `ruleCount`. When satisfied,
+  ✨ complete line + the alternatives fade to optional (still tappable for extra).
+- **Animation** — `now-enter` on appearance; per-member check state.
+
 ## IdentityCard
 
 `src/components/identity/IdentityCard.tsx`

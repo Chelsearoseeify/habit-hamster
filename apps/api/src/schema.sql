@@ -10,8 +10,13 @@ CREATE TABLE IF NOT EXISTS systems (
   name         TEXT NOT NULL,
   description  TEXT,
   identity_id  TEXT REFERENCES identities(id) ON DELETE SET NULL,
+  rule_count   INTEGER NOT NULL DEFAULT 1,
+  rule_period  TEXT NOT NULL DEFAULT 'day',
   created_at   TEXT NOT NULL
 );
+-- Migration for existing systems tables:
+--   ALTER TABLE systems ADD COLUMN rule_count INTEGER NOT NULL DEFAULT 1;
+--   ALTER TABLE systems ADD COLUMN rule_period TEXT NOT NULL DEFAULT 'day';
 
 CREATE TABLE IF NOT EXISTS routines (
   id           TEXT PRIMARY KEY,

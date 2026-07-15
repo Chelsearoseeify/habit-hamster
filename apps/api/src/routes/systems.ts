@@ -14,8 +14,17 @@ systemsRouter.post('/', async (c) => {
   const id = crypto.randomUUID()
   const createdAt = new Date().toISOString()
   await db.execute({
-    sql: `INSERT INTO systems (id, name, description, identity_id, created_at) VALUES (?, ?, ?, ?, ?)`,
-    args: [id, body.name, body.description ?? null, body.identityId ?? null, createdAt],
+    sql: `INSERT INTO systems (id, name, description, identity_id, rule_count, rule_period, created_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    args: [
+      id,
+      body.name,
+      body.description ?? null,
+      body.identityId ?? null,
+      body.ruleCount ?? 1,
+      body.rulePeriod ?? 'day',
+      createdAt,
+    ],
   })
   const result = await db.execute({ sql: 'SELECT * FROM systems WHERE id = ?', args: [id] })
   return c.json(rowToSystem(result.rows[0] as Record<string, unknown>), 201)
@@ -31,6 +40,8 @@ systemsRouter.patch('/:id', async (c) => {
   if (body.name !== undefined) { fields.push('name = ?'); args.push(body.name) }
   if ('description' in body) { fields.push('description = ?'); args.push(body.description ?? null) }
   if ('identityId' in body) { fields.push('identity_id = ?'); args.push(body.identityId ?? null) }
+  if (body.ruleCount !== undefined) { fields.push('rule_count = ?'); args.push(body.ruleCount) }
+  if (body.rulePeriod !== undefined) { fields.push('rule_period = ?'); args.push(body.rulePeriod) }
 
   if (fields.length === 0) return c.json({ error: 'No fields to update' }, 400)
 

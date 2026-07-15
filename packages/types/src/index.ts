@@ -32,15 +32,26 @@ export interface Identity {
   createdAt: string
 }
 
+export type SystemRulePeriod = 'day' | 'week'
+
 /**
  * A repeatable system that serves an identity — the layer between Identity and
  * Routine (Identity → System → Routine → Completion). "Systems over goals."
+ *
+ * A system is a RULE, not a folder: it is satisfied when at least `ruleCount` of
+ * its member routines are completed within `rulePeriod`. Members are equivalent
+ * ways to satisfy it ("move once today" — Gym OR Run OR Yoga), so completing one
+ * is enough and the rest become optional.
  */
 export interface System {
   id: string
   name: string
   description?: string
   identityId?: string | null
+  /** How many member completions satisfy the system in a period. Default 1. */
+  ruleCount: number
+  /** The window the rule is measured over. Default 'day'. */
+  rulePeriod: SystemRulePeriod
   createdAt: string
 }
 

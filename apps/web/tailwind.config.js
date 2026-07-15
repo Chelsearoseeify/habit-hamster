@@ -53,6 +53,21 @@ export default {
   				'4': 'hsl(var(--chart-4))',
   				'5': 'hsl(var(--chart-5))'
   			}
+  		},
+  		keyframes: {
+  			'now-enter': {
+  				'0%': { opacity: '0', transform: 'translateY(8px) scale(0.98)' },
+  				'100%': { opacity: '1', transform: 'translateY(0) scale(1)' }
+  			},
+  			'check-pop': {
+  				'0%': { transform: 'scale(0.6)', opacity: '0' },
+  				'60%': { transform: 'scale(1.15)', opacity: '1' },
+  				'100%': { transform: 'scale(1)', opacity: '1' }
+  			}
+  		},
+  		animation: {
+  			'now-enter': 'now-enter 320ms cubic-bezier(0.22, 1, 0.36, 1)',
+  			'check-pop': 'check-pop 300ms ease-out'
   		}
   	}
   },

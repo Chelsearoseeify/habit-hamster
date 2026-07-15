@@ -1,14 +1,18 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Routine, Completion, Identity, Reflection, Mood } from '@/types'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { IdentityCard } from '@/components/identity/IdentityCard'
 import { MoodSelector } from '@/components/reflection/MoodSelector'
-import { isRoutineDueOnDate, getMaxCountForRoutine } from '@/hooks/useCompletions'
+import { getMaxCountForRoutine } from '@/hooks/useCompletions'
 import { votesByIdentity } from '@/lib/identity-utils'
-import { getNextDueLabel, formatFrequency } from '@/lib/routine-utils'
+import { formatFrequency } from '@/lib/routine-utils'
+import { buildDayBlocks, currentBlock, type BlockName } from '@/lib/blocks'
 import { generateInsights } from '@/lib/insights'
 import { getToday } from '@/lib/date-utils'
+import { useReducedMotion } from '@/hooks/useReducedMotion'
+import { useCountUp } from '@/hooks/useCountUp'
+import { tapHaptic } from '@/lib/haptics'
 import { Check } from 'lucide-react'
 
 interface NowViewProps {
@@ -43,23 +47,28 @@ export function NowView({
 }: NowViewProps) {
   const today = getToday()
 
-  const nextAction = useMemo(() => {
-    const due = routines.filter((r) => isRoutineDueOnDate(r, today, completions))
-    const uncompleted = due.filter((r) => {
-      const c = completions.find((x) => x.routineId === r.id && x.date === today)
-      return (c?.count ?? 0) < getMaxCountForRoutine(r)
-    })
-    const ranked = [...uncompleted].sort((a, b) => {
-      const ua = getNextDueLabel(a, completions).urgent ? 0 : 1
-      const ub = getNextDueLabel(b, completions).urgent ? 0 : 1
-      if (ua !== ub) return ua - ub
-      const ta = a.timeRange?.start ?? '99:99'
-      const tb = b.timeRange?.start ?? '99:99'
-      if (ta !== tb) return ta.localeCompare(tb)
-      return 0 // insertion order (routines arrive createdAt asc)
-    })
-    return ranked[0] ?? null
-  }, [routines, completions, today])
+  // Chunking: reveal one time-of-day block at a time (principle 4).
+  const blocks = useMemo(
+    () => buildDayBlocks(routines, completions, today),
+    [routines, completions, today]
+  )
+  const block = currentBlock(blocks)
+  const nextAction = block?.remaining[0] ?? null
+
+  // Calm hand-off when the user clears a block and a later one takes over.
+  const [handoff, setHandoff] = useState<{ done: BlockName; next: BlockName } | null>(null)
+  const prevBlock = useRef<BlockName | null>(block?.name ?? null)
+  useEffect(() => {
+    const prev = prevBlock.current
+    const now = block?.name ?? null
+    if (prev && now && prev !== now) {
+      setHandoff({ done: prev, next: now })
+      prevBlock.current = now
+      const t = setTimeout(() => setHandoff(null), 2600)
+      return () => clearTimeout(t)
+    }
+    prevBlock.current = now
+  }, [block?.name])
 
   const votes = useMemo(
     () => votesByIdentity(identities, routines, completions),
@@ -71,6 +80,12 @@ export function NowView({
   )
 
   const reflection = getReflectionForDate(today)
+
+  const reduced = useReducedMotion()
+  const enter = reduced ? '' : 'animate-now-enter'
+  const completedCount = useCountUp(todayStats.completed)
+  const activeDays = useCountUp(consistency.activeDays)
+  const monthlyConsistency = useCountUp(consistency.monthlyConsistency)
 
   // Identities worth showing: those with at least one linked routine.
   const linkedIdentities = identities.filter((i) =>
@@ -87,10 +102,27 @@ export function NowView({
         </div>
       )}
 
-      {nextAction ? (
-        <NextActionCard routine={nextAction} completions={completions} onToggle={onToggle} />
+      {handoff && (
+        <p className={`text-center text-sm font-medium text-primary ${enter}`}>
+          {handoff.done} done — {handoff.next} is next.
+        </p>
+      )}
+
+      {nextAction && block ? (
+        <div className="space-y-3">
+          <p className="text-center text-xs uppercase tracking-wide text-muted-foreground">
+            {block.name} · <span className="tabular-nums">{block.completed} of {block.total} done</span>
+          </p>
+          <NextActionCard
+            key={nextAction.id}
+            routine={nextAction}
+            completions={completions}
+            onToggle={onToggle}
+            enter={enter}
+          />
+        </div>
       ) : (
-        <Card>
+        <Card key="done" className={enter}>
           <CardContent className="py-8 text-center space-y-1">
             <p className="text-lg font-medium">You're done for now.</p>
             <p className="text-sm text-muted-foreground">Nothing else needs you right now. Rest easy.</p>
@@ -99,8 +131,8 @@ export function NowView({
       )}
 
       {todayStats.total > 0 && (
-        <p className="text-center text-sm text-muted-foreground">
-          {todayStats.completed} of {todayStats.total} done today
+        <p className="text-center text-sm text-muted-foreground tabular-nums">
+          {completedCount} of {todayStats.total} done today
         </p>
       )}
 
@@ -114,10 +146,10 @@ export function NowView({
       </Card>
 
       {consistency.daysElapsed > 0 && (
-        <p className="text-center text-sm text-muted-foreground">
-          You've shown up {consistency.activeDays} of {consistency.daysElapsed} days this month
+        <p className="text-center text-sm text-muted-foreground tabular-nums">
+          You've shown up {activeDays} of {consistency.daysElapsed} days this month
           {' — '}
-          {consistency.monthlyConsistency}%
+          {monthlyConsistency}%
         </p>
       )}
 
@@ -136,10 +168,12 @@ function NextActionCard({
   routine,
   completions,
   onToggle,
+  enter,
 }: {
   routine: Routine
   completions: Completion[]
   onToggle: (routineId: string, maxCount: number) => void
+  enter: string
 }) {
   const today = getToday()
   const maxCount = getMaxCountForRoutine(routine)
@@ -147,8 +181,13 @@ function NextActionCard({
   const remaining = maxCount - current
   const mins = estimatedMinutes(routine)
 
+  const handleDone = () => {
+    tapHaptic()
+    onToggle(routine.id, maxCount)
+  }
+
   return (
-    <Card className="border-primary/30">
+    <Card className={`border-primary/30 ${enter}`}>
       <CardContent className="py-8 space-y-5 text-center">
         <div className="space-y-1">
           <p className="text-xs uppercase tracking-wide text-muted-foreground">Next</p>
@@ -169,10 +208,10 @@ function NextActionCard({
 
         <Button
           size="lg"
-          className="h-14 w-full max-w-xs mx-auto text-base"
-          onClick={() => onToggle(routine.id, maxCount)}
+          className="h-14 w-full max-w-xs mx-auto text-base transition-transform duration-100 active:scale-95"
+          onClick={handleDone}
         >
-          <Check className="mr-2 h-5 w-5" />
+          <Check className={`mr-2 h-5 w-5 ${enter ? 'animate-check-pop' : ''}`} />
           {maxCount > 1 ? `Log one (${current}/${maxCount})` : 'Done'}
         </Button>
       </CardContent>

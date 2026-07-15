@@ -128,7 +128,7 @@ function CenterTask({
   item: WheelItem
   onToggle: (routineId: string, maxCount: number) => void
 }) {
-  const { routine, count, maxCount } = item
+  const { routine, count, maxCount, done } = item
   const mins = estimatedMinutes(routine)
   const remaining = maxCount - count
 
@@ -139,14 +139,22 @@ function CenterTask({
         tapHaptic()
         onToggle(routine.id, maxCount)
       }}
-      className="flex h-full w-full flex-col items-center justify-center rounded-xl border border-primary/40 bg-card px-5 text-center shadow-sm transition-transform duration-100 active:scale-[0.98]"
+      className={`flex h-full w-full flex-col items-center justify-center rounded-xl border bg-card px-5 text-center shadow-sm transition-transform duration-100 active:scale-[0.98] ${
+        done ? 'border-primary/20' : 'border-primary/40'
+      }`}
     >
-      <span className="max-w-full truncate text-lg font-semibold leading-tight">{routine.name}</span>
+      <span
+        className={`inline-flex max-w-full items-center gap-1.5 truncate text-lg font-semibold leading-tight ${
+          done ? 'text-muted-foreground line-through' : ''
+        }`}
+      >
+        {done && <Check className="h-4 w-4 shrink-0 text-primary no-underline" />}
+        {routine.name}
+      </span>
       <span className="max-w-full truncate text-xs text-muted-foreground">
-        {routine.category ? `${routine.category} · ` : ''}
-        {formatFrequency(routine)}
-        {mins ? ` · ~${mins} min` : ''}
-        {maxCount > 1 ? ` · ${remaining} left` : ''}
+        {done
+          ? 'Done today — tap to undo'
+          : `${routine.category ? `${routine.category} · ` : ''}${formatFrequency(routine)}${mins ? ` · ~${mins} min` : ''}${maxCount > 1 ? ` · ${remaining} left` : ''}`}
       </span>
     </button>
   )

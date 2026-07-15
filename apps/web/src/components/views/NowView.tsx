@@ -112,9 +112,13 @@ export function NowView({
   const activeDays = useCountUp(consistency.activeDays)
   const monthlyConsistency = useCountUp(consistency.monthlyConsistency)
 
-  // Identities worth showing: those with at least one linked routine.
-  const linkedIdentities = identities.filter((i) =>
-    routines.some((r) => r.identityId === i.id)
+  // Identities served by a system are shown inside that system's card, so the
+  // top list keeps only linked identities WITHOUT a system (no duplication).
+  const systemServedIdentityIds = new Set(
+    activeSystems.map(({ system }) => system.identityId).filter(Boolean)
+  )
+  const linkedIdentities = identities.filter(
+    (i) => routines.some((r) => r.identityId === i.id) && !systemServedIdentityIds.has(i.id)
   )
 
   return (
@@ -135,6 +139,8 @@ export function NowView({
               system={system}
               members={members}
               completions={completions}
+              identity={system.identityId ? identities.find((i) => i.id === system.identityId) : undefined}
+              votes={system.identityId ? votes[system.identityId] ?? 0 : 0}
               onToggle={onToggle}
               enter={enter}
             />

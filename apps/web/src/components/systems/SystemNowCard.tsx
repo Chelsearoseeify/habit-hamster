@@ -1,4 +1,4 @@
-import type { System, Routine, Completion } from '@/types'
+import type { System, Routine, Completion, Identity } from '@/types'
 import { Card, CardContent } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import { getMaxCountForRoutine } from '@/hooks/useCompletions'
@@ -8,6 +8,8 @@ interface SystemNowCardProps {
   system: System
   members: Routine[]
   completions: Completion[]
+  identity?: Identity
+  votes: number
   onToggle: (routineId: string, maxCount: number) => void
   enter: string
 }
@@ -17,7 +19,7 @@ interface SystemNowCardProps {
  * clear thing). Complete any one member to satisfy it — the rest stay optional.
  * When satisfied, the alternatives fade but remain tappable for extra credit.
  */
-export function SystemNowCard({ system, members, completions, onToggle, enter }: SystemNowCardProps) {
+export function SystemNowCard({ system, members, completions, identity, votes, onToggle, enter }: SystemNowCardProps) {
   const status = systemStatus(system, members, completions)
   const { satisfied, done, target, periodLabel, doneMemberIds } = status
 
@@ -26,6 +28,11 @@ export function SystemNowCard({ system, members, completions, onToggle, enter }:
       <CardContent className="py-6 space-y-4 text-center">
         <div className="space-y-1">
           <p className="text-xs uppercase tracking-wide text-muted-foreground">{system.name}</p>
+          {identity && (
+            <p className="text-sm text-muted-foreground/80">
+              {identity.statement?.trim() || `Becoming ${identity.name}`}
+            </p>
+          )}
           {satisfied ? (
             <p className="text-base font-medium text-primary">
               ✨ {system.name} complete {periodLabel}.
@@ -56,6 +63,12 @@ export function SystemNowCard({ system, members, completions, onToggle, enter }:
             )
           })}
         </div>
+
+        {identity && votes > 0 && (
+          <p className="text-xs text-muted-foreground/70">
+            {votes} vote{votes === 1 ? '' : 's'} for becoming {identity.name.toLowerCase()}
+          </p>
+        )}
       </CardContent>
     </Card>
   )

@@ -12,6 +12,7 @@ interface RoutinesViewProps {
   onPause: (id: string, paused: boolean) => void
   identities?: Identity[]
   systems?: System[]
+  categories?: string[]
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -21,7 +22,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   Supplements: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',
 }
 
-export function RoutinesView({ routines, completions, onDelete, onEdit, onPause, identities = [], systems = [] }: RoutinesViewProps) {
+export function RoutinesView({ routines, completions, onDelete, onEdit, onPause, identities = [], systems = [], categories = [] }: RoutinesViewProps) {
   if (routines.length === 0) {
     return (
       <div className="text-center py-12 text-muted-foreground">
@@ -30,11 +31,12 @@ export function RoutinesView({ routines, completions, onDelete, onEdit, onPause,
     )
   }
 
-  // Group by category, preserving insertion order
+  // Group by category, preserving insertion order. Empty category → "Uncategorized".
   const grouped: Record<string, Routine[]> = {}
   for (const r of routines) {
-    if (!grouped[r.category]) grouped[r.category] = []
-    grouped[r.category].push(r)
+    const key = r.category || 'Uncategorized'
+    if (!grouped[key]) grouped[key] = []
+    grouped[key].push(r)
   }
 
   return (
@@ -51,10 +53,12 @@ export function RoutinesView({ routines, completions, onDelete, onEdit, onPause,
 
               return (
                 <div key={routine.id} className={`flex items-center gap-3 px-4 py-3 bg-card hover:bg-muted/40 transition-colors ${routine.paused ? 'opacity-60' : ''}`}>
-                  {/* Category dot */}
-                  <span className={`shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full ${colorClass}`}>
-                    {routine.category}
-                  </span>
+                  {/* Category dot — only when a category is set */}
+                  {routine.category && (
+                    <span className={`shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full ${colorClass}`}>
+                      {routine.category}
+                    </span>
+                  )}
 
                   {/* Main info */}
                   <div className="flex-1 min-w-0">
@@ -112,6 +116,7 @@ export function RoutinesView({ routines, completions, onDelete, onEdit, onPause,
                     onSubmit={(data) => onEdit(data, routine.id)}
                     identities={identities}
                     systems={systems}
+                    categories={categories}
                     trigger={
                       <Button variant="ghost" size="icon" className="shrink-0 h-8 w-8 text-muted-foreground hover:text-foreground">
                         <Pencil className="h-3.5 w-3.5" />

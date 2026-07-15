@@ -82,6 +82,7 @@ export function generateInsights(routines: Routine[], completions: Completion[])
   // --- Best category ---
   const byCategory: Record<string, Bucket> = {}
   for (const routine of routines) {
+    if (!routine.category) continue
     const maxCount = getMaxCountForRoutine(routine)
     byCategory[routine.category] ??= { met: 0, expected: 0 }
     for (const date of days) {

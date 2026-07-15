@@ -203,7 +203,8 @@ function NextActionCard({
           <p className="text-xs uppercase tracking-wide text-muted-foreground">Next</p>
           <h2 className="text-2xl font-semibold">{routine.name}</h2>
           <p className="text-sm text-muted-foreground">
-            {routine.category} · {formatFrequency(routine)}
+            {routine.category ? `${routine.category} · ` : ''}
+            {formatFrequency(routine)}
             {mins ? ` · ~${mins} min` : ''}
           </p>
           {routine.description && (

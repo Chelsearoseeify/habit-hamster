@@ -31,6 +31,8 @@ interface RoutineFormProps {
   trigger?: React.ReactNode
   identities?: Identity[]
   systems?: System[]
+  /** Existing categories in use, offered as suggestions alongside the defaults. */
+  categories?: string[]
 }
 
 const WEEKDAYS = [
@@ -43,10 +45,14 @@ const WEEKDAYS = [
   { value: 7, label: 'Sun' },
 ]
 
-export function RoutineForm({ onSubmit, initialData, trigger, identities = [], systems = [] }: RoutineFormProps) {
+export function RoutineForm({ onSubmit, initialData, trigger, identities = [], systems = [], categories = [] }: RoutineFormProps) {
   const [open, setOpen] = useState(false)
   const [name, setName] = useState(initialData?.name ?? '')
-  const [category, setCategory] = useState(initialData?.category ?? CATEGORIES[0])
+  const [category, setCategory] = useState(initialData?.category ?? '')
+
+  const categorySuggestions = Array.from(
+    new Set([...CATEGORIES, ...categories, ...(initialData?.category ? [initialData.category] : [])])
+  ).filter(Boolean)
   const [identityId, setIdentityId] = useState<string>(initialData?.identityId ?? NO_IDENTITY)
   const [systemId, setSystemId] = useState<string>(initialData?.systemId ?? NO_SYSTEM)
   const [frequencyType, setFrequencyType] = useState<FrequencyType['type']>(
@@ -92,7 +98,7 @@ export function RoutineForm({ onSubmit, initialData, trigger, identities = [], s
     const timeRange = timeStart
       ? { start: timeStart, ...(timeEnd ? { end: timeEnd } : {}) }
       : undefined
-    onSubmit({ name: name.trim(), category, frequency, timeRange, preferredDays: preferredDays.length > 0 ? preferredDays : undefined, description: description.trim() || undefined, identityId: identityId === NO_IDENTITY ? null : identityId, systemId: systemId === NO_SYSTEM ? null : systemId })
+    onSubmit({ name: name.trim(), category: category.trim(), frequency, timeRange, preferredDays: preferredDays.length > 0 ? preferredDays : undefined, description: description.trim() || undefined, identityId: identityId === NO_IDENTITY ? null : identityId, systemId: systemId === NO_SYSTEM ? null : systemId })
     setOpen(false)
     resetForm()
   }
@@ -100,7 +106,7 @@ export function RoutineForm({ onSubmit, initialData, trigger, identities = [], s
   const resetForm = () => {
     if (!initialData) {
       setName('')
-      setCategory(CATEGORIES[0])
+      setCategory('')
       setIdentityId(NO_IDENTITY)
       setSystemId(NO_SYSTEM)
       setFrequencyType('daily')
@@ -159,19 +165,19 @@ export function RoutineForm({ onSubmit, initialData, trigger, identities = [], s
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="category">Category</Label>
-            <Select value={category} onValueChange={setCategory}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {CATEGORIES.map((cat) => (
-                  <SelectItem key={cat} value={cat}>
-                    {cat}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Label htmlFor="category">Category (optional)</Label>
+            <Input
+              id="category"
+              list="category-suggestions"
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              placeholder="Type or pick — leave blank for none"
+            />
+            <datalist id="category-suggestions">
+              {categorySuggestions.map((cat) => (
+                <option key={cat} value={cat} />
+              ))}
+            </datalist>
           </div>
 
           {identities.length > 0 && (

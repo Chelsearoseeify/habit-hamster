@@ -63,6 +63,7 @@ function App() {
   }
 
   const routinesByCategory = getRoutinesByCategory()
+  const usedCategories = [...new Set(routines.map((r) => r.category).filter(Boolean))]
   const isNow = view === 'now'
 
   // Auto-dismiss celebrations after 4 seconds
@@ -121,7 +122,7 @@ function App() {
           </div>
           <div className="flex items-center gap-1">
             <NotificationSettings onEnabledChange={() => {}} />
-            <RoutineForm onSubmit={addRoutine} identities={identities} systems={systems} />
+            <RoutineForm onSubmit={addRoutine} identities={identities} systems={systems} categories={usedCategories} />
           </div>
         </header>
 
@@ -312,6 +313,7 @@ function App() {
                       onPause={(id, paused) => updateRoutine(id, { paused })}
                       identities={identities}
                       systems={systems}
+                      categories={usedCategories}
                     />
                   </CardContent>
                 </Card>

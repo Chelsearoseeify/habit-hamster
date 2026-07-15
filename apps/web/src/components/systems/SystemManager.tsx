@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { System, Identity, Routine, SystemRulePeriod } from '@/types'
+import type { System, Identity, Routine, SystemRulePeriod, SystemRuleType } from '@/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -34,6 +34,7 @@ export function SystemManager({ systems, identities, routines, onAdd, onEdit, on
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
   const [identityId, setIdentityId] = useState<string>(NO_IDENTITY)
+  const [ruleType, setRuleType] = useState<SystemRuleType>('count')
   const [ruleCount, setRuleCount] = useState(1)
   const [rulePeriod, setRulePeriod] = useState<SystemRulePeriod>('day')
 
@@ -41,6 +42,7 @@ export function SystemManager({ systems, identities, routines, onAdd, onEdit, on
   const [editName, setEditName] = useState('')
   const [editDescription, setEditDescription] = useState('')
   const [editIdentityId, setEditIdentityId] = useState<string>(NO_IDENTITY)
+  const [editRuleType, setEditRuleType] = useState<SystemRuleType>('count')
   const [editRuleCount, setEditRuleCount] = useState(1)
   const [editRulePeriod, setEditRulePeriod] = useState<SystemRulePeriod>('day')
 
@@ -50,12 +52,14 @@ export function SystemManager({ systems, identities, routines, onAdd, onEdit, on
       name: name.trim(),
       description: description.trim() || undefined,
       identityId: identityId === NO_IDENTITY ? null : identityId,
+      ruleType,
       ruleCount: Math.max(1, ruleCount),
       rulePeriod,
     })
     setName('')
     setDescription('')
     setIdentityId(NO_IDENTITY)
+    setRuleType('count')
     setRuleCount(1)
     setRulePeriod('day')
   }
@@ -65,6 +69,7 @@ export function SystemManager({ systems, identities, routines, onAdd, onEdit, on
     setEditName(system.name)
     setEditDescription(system.description ?? '')
     setEditIdentityId(system.identityId ?? NO_IDENTITY)
+    setEditRuleType(system.ruleType)
     setEditRuleCount(system.ruleCount)
     setEditRulePeriod(system.rulePeriod)
   }
@@ -74,6 +79,7 @@ export function SystemManager({ systems, identities, routines, onAdd, onEdit, on
     setEditName('')
     setEditDescription('')
     setEditIdentityId(NO_IDENTITY)
+    setEditRuleType('count')
     setEditRuleCount(1)
     setEditRulePeriod('day')
   }
@@ -84,6 +90,7 @@ export function SystemManager({ systems, identities, routines, onAdd, onEdit, on
       name: editName.trim(),
       description: editDescription.trim() || undefined,
       identityId: editIdentityId === NO_IDENTITY ? null : editIdentityId,
+      ruleType: editRuleType,
       ruleCount: Math.max(1, editRuleCount),
       rulePeriod: editRulePeriod,
     })
@@ -135,18 +142,29 @@ export function SystemManager({ systems, identities, routines, onAdd, onEdit, on
                           </SelectContent>
                         </Select>
                       )}
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <span className="text-xs text-muted-foreground shrink-0">Complete</span>
-                        <Input
-                          type="number"
-                          min={1}
-                          value={editRuleCount}
-                          onChange={(e) => setEditRuleCount(Number(e.target.value))}
-                          className="w-16"
-                        />
+                        <Select value={editRuleType} onValueChange={(v) => setEditRuleType(v as SystemRuleType)}>
+                          <SelectTrigger className="w-28">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">all</SelectItem>
+                            <SelectItem value="count">at least</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        {editRuleType === 'count' && (
+                          <Input
+                            type="number"
+                            min={1}
+                            value={editRuleCount}
+                            onChange={(e) => setEditRuleCount(Number(e.target.value))}
+                            className="w-16"
+                          />
+                        )}
                         <span className="text-xs text-muted-foreground shrink-0">per</span>
                         <Select value={editRulePeriod} onValueChange={(v) => setEditRulePeriod(v as SystemRulePeriod)}>
-                          <SelectTrigger className="flex-1">
+                          <SelectTrigger className="w-24">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -218,7 +236,7 @@ export function SystemManager({ systems, identities, routines, onAdd, onEdit, on
                     <p className="text-xs text-muted-foreground truncate">{system.description}</p>
                   )}
                   <p className="text-xs text-muted-foreground/70 mt-0.5">
-                    complete {system.ruleCount} / {system.rulePeriod} · {linked} routine{linked === 1 ? '' : 's'}
+                    complete {system.ruleType === 'all' ? 'all' : system.ruleCount} / {system.rulePeriod} · {linked} routine{linked === 1 ? '' : 's'}
                     {identity ? ` · serves ${identity.name}` : ''}
                   </p>
                 </div>
@@ -285,18 +303,29 @@ export function SystemManager({ systems, identities, routines, onAdd, onEdit, on
         )}
         <div className="space-y-1">
           <Label>Rule</Label>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs text-muted-foreground shrink-0">Complete</span>
-            <Input
-              type="number"
-              min={1}
-              value={ruleCount}
-              onChange={(e) => setRuleCount(Number(e.target.value))}
-              className="w-16"
-            />
+            <Select value={ruleType} onValueChange={(v) => setRuleType(v as SystemRuleType)}>
+              <SelectTrigger className="w-28">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">all</SelectItem>
+                <SelectItem value="count">at least</SelectItem>
+              </SelectContent>
+            </Select>
+            {ruleType === 'count' && (
+              <Input
+                type="number"
+                min={1}
+                value={ruleCount}
+                onChange={(e) => setRuleCount(Number(e.target.value))}
+                className="w-16"
+              />
+            )}
             <span className="text-xs text-muted-foreground shrink-0">per</span>
             <Select value={rulePeriod} onValueChange={(v) => setRulePeriod(v as SystemRulePeriod)}>
-              <SelectTrigger className="flex-1">
+              <SelectTrigger className="w-24">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -306,7 +335,9 @@ export function SystemManager({ systems, identities, routines, onAdd, onEdit, on
             </Select>
           </div>
           <p className="text-xs text-muted-foreground/70">
-            Any {ruleCount === 1 ? 'one member' : `${ruleCount} members`} satisfies it per {rulePeriod}.
+            {ruleType === 'all'
+              ? `Every member must be done per ${rulePeriod}.`
+              : `Any ${ruleCount === 1 ? 'one member' : `${ruleCount} members`} satisfies it per ${rulePeriod}.`}
           </p>
         </div>
         <Button onClick={handleAdd} className="w-full" disabled={!name.trim()}>

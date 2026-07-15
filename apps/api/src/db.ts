@@ -1,5 +1,5 @@
 import { createClient } from '@libsql/client'
-import type { Routine, Completion, GamificationState, Identity, System, SystemRulePeriod, Reflection, Mood } from '@habit-hamster/types'
+import type { Routine, Completion, GamificationState, Identity, System, SystemRulePeriod, SystemRuleType, Reflection, Mood } from '@habit-hamster/types'
 
 export const db = createClient({
   url: process.env.TURSO_DATABASE_URL!,
@@ -37,6 +37,7 @@ export function rowToSystem(row: Record<string, unknown>): System {
     name: row.name as string,
     description: (row.description as string) ?? undefined,
     identityId: (row.identity_id as string) ?? undefined,
+    ruleType: ((row.rule_type as string) ?? 'count') as SystemRuleType,
     ruleCount: (row.rule_count as number) ?? 1,
     rulePeriod: ((row.rule_period as string) ?? 'day') as SystemRulePeriod,
     createdAt: row.created_at as string,

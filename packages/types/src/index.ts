@@ -34,6 +34,9 @@ export interface Identity {
 
 export type SystemRulePeriod = 'day' | 'week'
 
+/** 'count' = complete at least ruleCount members; 'all' = complete every member. */
+export type SystemRuleType = 'count' | 'all'
+
 /**
  * A repeatable system that serves an identity — the layer between Identity and
  * Routine (Identity → System → Routine → Completion). "Systems over goals."
@@ -48,7 +51,9 @@ export interface System {
   name: string
   description?: string
   identityId?: string | null
-  /** How many member completions satisfy the system in a period. Default 1. */
+  /** 'count' = at least ruleCount members; 'all' = every member. Default 'count'. */
+  ruleType: SystemRuleType
+  /** How many member completions satisfy the system (when ruleType='count'). Default 1. */
   ruleCount: number
   /** The window the rule is measured over. Default 'day'. */
   rulePeriod: SystemRulePeriod

@@ -41,21 +41,29 @@ export function systemStatus(
 
   const memberIds = new Set(members.map((m) => m.id))
   const doneMemberIds = new Set<string>()
-  let done = 0
+  let sessions = 0
   for (const c of completions) {
     if (c.count > 0 && memberIds.has(c.routineId) && window.has(c.date)) {
-      done++
+      sessions++
       doneMemberIds.add(c.routineId)
     }
   }
 
+  if (system.ruleType === 'all') {
+    // Every member must be done in the period; progress is distinct members done.
+    const target = members.length
+    const done = doneMemberIds.size
+    return { done, target, satisfied: target > 0 && done >= target, periodLabel, doneMemberIds }
+  }
+
   const target = Math.max(1, system.ruleCount)
-  return { done, target, satisfied: done >= target, periodLabel, doneMemberIds }
+  return { done: sessions, target, satisfied: sessions >= target, periodLabel, doneMemberIds }
 }
 
-/** Plain-language rule, e.g. "Do any one today" / "Do 3 this week". */
+/** Plain-language rule, e.g. "Do all today" / "Do any one today" / "Do 3 this week". */
 export function ruleText(system: System): string {
-  const target = Math.max(1, system.ruleCount)
   const period = system.rulePeriod === 'week' ? 'this week' : 'today'
+  if (system.ruleType === 'all') return `Do all ${period}`
+  const target = Math.max(1, system.ruleCount)
   return target === 1 ? `Do any one ${period}` : `Do ${target} ${period}`
 }

@@ -14,13 +14,14 @@ systemsRouter.post('/', async (c) => {
   const id = crypto.randomUUID()
   const createdAt = new Date().toISOString()
   await db.execute({
-    sql: `INSERT INTO systems (id, name, description, identity_id, rule_count, rule_period, created_at)
-          VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    sql: `INSERT INTO systems (id, name, description, identity_id, rule_type, rule_count, rule_period, created_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
       id,
       body.name,
       body.description ?? null,
       body.identityId ?? null,
+      body.ruleType ?? 'count',
       body.ruleCount ?? 1,
       body.rulePeriod ?? 'day',
       createdAt,
@@ -40,6 +41,7 @@ systemsRouter.patch('/:id', async (c) => {
   if (body.name !== undefined) { fields.push('name = ?'); args.push(body.name) }
   if ('description' in body) { fields.push('description = ?'); args.push(body.description ?? null) }
   if ('identityId' in body) { fields.push('identity_id = ?'); args.push(body.identityId ?? null) }
+  if (body.ruleType !== undefined) { fields.push('rule_type = ?'); args.push(body.ruleType) }
   if (body.ruleCount !== undefined) { fields.push('rule_count = ?'); args.push(body.ruleCount) }
   if (body.rulePeriod !== undefined) { fields.push('rule_period = ?'); args.push(body.rulePeriod) }
 

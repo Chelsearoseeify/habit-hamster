@@ -125,11 +125,12 @@ of its member routines are completed within `rulePeriod` (day/week). Members are
 equivalent ways to satisfy it ("move once today" — Gym OR Run OR Yoga); doing one
 is enough, the rest become optional. This is the to-do-list → behaviour-OS shift.
 
-Decisions: rule = "complete N per period" (N default 1); the system rule governs
-its members (their own frequency is ignored in Now); when satisfied, alternatives
-stay visible but faded/optional.
+Decisions: rule = "complete N per period" (N default 1) OR "complete all per
+period" (`ruleType: 'count' | 'all'` — 'all' targets every member dynamically, so
+adding/removing routines just works); the system rule governs its members (their
+own frequency is ignored in Now); when satisfied, alternatives stay faded/optional.
 
-- `System` gains `ruleCount` + `rulePeriod` (schema cols, migrated live).
+- `System` gains `ruleType` + `ruleCount` + `rulePeriod` (schema cols, migrated live).
 - `lib/systems.ts`: `systemMembers`, `systemStatus` (done/target/satisfied +
   per-member done set), `ruleText`.
 - `NowView`: member routines are pulled OUT of the standalone block flow and

@@ -139,19 +139,14 @@ function CenterTask({
         tapHaptic()
         onToggle(routine.id, maxCount)
       }}
-      className="flex h-full w-full items-center gap-4 rounded-xl border border-primary/40 bg-card px-5 text-left shadow-sm transition-transform duration-100 active:scale-[0.98]"
+      className="flex h-full w-full flex-col items-center justify-center rounded-xl border border-primary/40 bg-card px-5 text-center shadow-sm transition-transform duration-100 active:scale-[0.98]"
     >
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 border-primary text-primary">
-        <Check className="h-5 w-5" />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-lg font-semibold leading-tight">{routine.name}</span>
-        <span className="block truncate text-xs text-muted-foreground">
-          {routine.category ? `${routine.category} · ` : ''}
-          {formatFrequency(routine)}
-          {mins ? ` · ~${mins} min` : ''}
-          {maxCount > 1 ? ` · ${remaining} left` : ''}
-        </span>
+      <span className="max-w-full truncate text-lg font-semibold leading-tight">{routine.name}</span>
+      <span className="max-w-full truncate text-xs text-muted-foreground">
+        {routine.category ? `${routine.category} · ` : ''}
+        {formatFrequency(routine)}
+        {mins ? ` · ~${mins} min` : ''}
+        {maxCount > 1 ? ` · ${remaining} left` : ''}
       </span>
     </button>
   )
@@ -160,14 +155,12 @@ function CenterTask({
 function FadedTask({ item }: { item: WheelItem }) {
   const { routine, done } = item
   return (
-    <div className="flex h-full w-full items-center gap-3 px-5">
-      <span
-        className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
-          done ? 'border-primary bg-primary text-primary-foreground' : 'border-muted-foreground/40'
-        }`}
-      >
-        {done && <Check className="h-3 w-3" />}
-      </span>
+    <div className="flex h-full w-full items-center justify-center gap-2 px-5">
+      {done && (
+        <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
+          <Check className="h-2.5 w-2.5" />
+        </span>
+      )}
       <span className={`truncate text-sm ${done ? 'text-muted-foreground line-through' : 'text-foreground'}`}>
         {routine.name}
       </span>

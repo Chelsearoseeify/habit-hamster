@@ -1,8 +1,8 @@
 import type { System, Routine, Completion } from '@/types'
 import { Card, CardContent } from '@/components/ui/card'
+import { Checkbox } from '@/components/ui/checkbox'
 import { getMaxCountForRoutine } from '@/hooks/useCompletions'
 import { systemStatus, ruleText } from '@/lib/systems'
-import { Check, Circle } from 'lucide-react'
 
 interface SystemNowCardProps {
   system: System
@@ -50,11 +50,7 @@ export function SystemNowCard({ system, members, completions, onToggle, enter }:
                   isDone ? 'border-primary/40 bg-primary/5' : 'border-border'
                 }`}
               >
-                {isDone ? (
-                  <Check className="h-4 w-4 shrink-0 text-primary" />
-                ) : (
-                  <Circle className="h-4 w-4 shrink-0 text-muted-foreground" />
-                )}
+                <Checkbox checked={isDone} className="pointer-events-none shrink-0" tabIndex={-1} />
                 <span className="text-sm font-medium">{m.name}</span>
               </button>
             )

@@ -4,13 +4,14 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { votesForIdentity } from '@/lib/identity-utils'
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus, Trash2, Pencil, Check, X } from 'lucide-react'
 
 interface IdentityManagerProps {
   identities: Identity[]
   routines: Routine[]
   completions: Completion[]
   onAdd: (identity: Omit<Identity, 'id' | 'createdAt'>) => Promise<Identity> | void
+  onEdit: (id: string, updates: Partial<Omit<Identity, 'id' | 'createdAt'>>) => void
   onDelete: (id: string) => void
 }
 
@@ -18,15 +19,37 @@ interface IdentityManagerProps {
  * Lightweight identity management for the More/Stats area: create the identities
  * you're voting for, then link routines to them via the routine form.
  */
-export function IdentityManager({ identities, routines, completions, onAdd, onDelete }: IdentityManagerProps) {
+export function IdentityManager({ identities, routines, completions, onAdd, onEdit, onDelete }: IdentityManagerProps) {
   const [name, setName] = useState('')
   const [statement, setStatement] = useState('')
+
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editName, setEditName] = useState('')
+  const [editStatement, setEditStatement] = useState('')
 
   const handleAdd = () => {
     if (!name.trim()) return
     onAdd({ name: name.trim(), statement: statement.trim() || undefined })
     setName('')
     setStatement('')
+  }
+
+  const startEdit = (identity: Identity) => {
+    setEditingId(identity.id)
+    setEditName(identity.name)
+    setEditStatement(identity.statement ?? '')
+  }
+
+  const cancelEdit = () => {
+    setEditingId(null)
+    setEditName('')
+    setEditStatement('')
+  }
+
+  const saveEdit = () => {
+    if (!editingId || !editName.trim()) return
+    onEdit(editingId, { name: editName.trim(), statement: editStatement.trim() || undefined })
+    cancelEdit()
   }
 
   return (
@@ -43,6 +66,53 @@ export function IdentityManager({ identities, routines, completions, onAdd, onDe
           {identities.map((identity) => {
             const linked = routines.filter((r) => r.identityId === identity.id).length
             const votes = votesForIdentity(identity.id, routines, completions)
+
+            if (editingId === identity.id) {
+              return (
+                <div key={identity.id} className="flex items-start gap-2 px-4 py-3 bg-card">
+                  <div className="flex-1 min-w-0 space-y-2">
+                    <Input
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      placeholder="Name"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') saveEdit()
+                        if (e.key === 'Escape') cancelEdit()
+                      }}
+                    />
+                    <Input
+                      value={editStatement}
+                      onChange={(e) => setEditStatement(e.target.value)}
+                      placeholder="Statement (optional)"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') saveEdit()
+                        if (e.key === 'Escape') cancelEdit()
+                      }}
+                    />
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="shrink-0 h-8 w-8 text-muted-foreground hover:text-primary"
+                    onClick={saveEdit}
+                    disabled={!editName.trim()}
+                    aria-label="Save"
+                  >
+                    <Check className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="shrink-0 h-8 w-8 text-muted-foreground hover:text-foreground"
+                    onClick={cancelEdit}
+                    aria-label="Cancel"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              )
+            }
+
             return (
               <div key={identity.id} className="flex items-center gap-3 px-4 py-3 bg-card">
                 <div className="flex-1 min-w-0">
@@ -57,8 +127,18 @@ export function IdentityManager({ identities, routines, completions, onAdd, onDe
                 <Button
                   variant="ghost"
                   size="icon"
+                  className="shrink-0 h-8 w-8 text-muted-foreground hover:text-foreground"
+                  onClick={() => startEdit(identity)}
+                  aria-label="Edit"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
                   className="shrink-0 h-8 w-8 text-muted-foreground hover:text-destructive"
                   onClick={() => onDelete(identity.id)}
+                  aria-label="Delete"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                 </Button>

@@ -33,7 +33,7 @@ function App() {
   const { routines, addRoutine, updateRoutine, deleteRoutine, getRoutinesByCategory } = useRoutines()
   const { completions, toggleCompletion } = useCompletions()
   const { todayStats, streak } = useStats(routines, completions)
-  const { identities, addIdentity, deleteIdentity } = useIdentities()
+  const { identities, addIdentity, updateIdentity, deleteIdentity } = useIdentities()
   const { systems, addSystem, deleteSystem } = useSystems()
   const { reflections, getReflectionForDate, setReflection } = useReflections()
   const consistency = useConsistency(routines, completions)
@@ -293,6 +293,7 @@ function App() {
                       routines={routines}
                       completions={completions}
                       onAdd={addIdentity}
+                      onEdit={updateIdentity}
                       onDelete={deleteIdentity}
                     />
                     <SystemManager

@@ -4,6 +4,16 @@
 [build]
   command = "pnpm build"
   publish = "apps/web/dist"
+  functions = "netlify/functions"
 
 [build.environment]
   NODE_VERSION = "22"
+
+# The Hono API runs as a v2 function; it bundles the TypeScript source (incl. the
+# .js-specifier imports and @libsql/client / web-push deps) via esbuild.
+[functions]
+  node_bundler = "esbuild"
+
+[functions."api"]
+  # Keep the native libsql client external so Netlify installs its platform binary.
+  external_node_modules = ["@libsql/client"]

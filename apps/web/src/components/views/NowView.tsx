@@ -1,16 +1,13 @@
 import { useMemo } from 'react'
 import type { Routine, Completion, Identity, System, Reflection, Mood } from '@/types'
 import { Card, CardContent } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import { MoodSelector } from '@/components/reflection/MoodSelector'
+import { TaskWheel } from '@/components/views/TaskWheel'
 import { getMaxCountForRoutine, isRoutineDueOnDate } from '@/hooks/useCompletions'
 import { identityTodayProgress } from '@/lib/identity-utils'
-import { formatFrequency } from '@/lib/routine-utils'
 import { blockForRoutine, BLOCK_ORDER } from '@/lib/blocks'
 import { getToday } from '@/lib/date-utils'
 import { useReducedMotion } from '@/hooks/useReducedMotion'
-import { tapHaptic } from '@/lib/haptics'
-import { Check } from 'lucide-react'
 
 interface NowViewProps {
   routines: Routine[]
@@ -23,15 +20,6 @@ interface NowViewProps {
   onToggle: (routineId: string, maxCount: number) => void
   getReflectionForDate: (date: string) => Reflection | undefined
   setReflection: (date: string, mood: Mood, note?: string) => void
-}
-
-function estimatedMinutes(routine: Routine): number | null {
-  const tr = routine.timeRange
-  if (!tr?.start || !tr.end) return null
-  const [sh, sm] = tr.start.split(':').map(Number)
-  const [eh, em] = tr.end.split(':').map(Number)
-  const mins = eh * 60 + em - (sh * 60 + sm)
-  return mins > 0 ? mins : null
 }
 
 const BLOCK_WEIGHT: Record<string, number> = Object.fromEntries(
@@ -115,30 +103,12 @@ export function NowView({
             </CardContent>
           </Card>
         ) : (
-          <ul className="space-y-2">
-            {items.map((item) =>
-              item.routine.id === nextId ? (
-                <li key={item.routine.id}>
-                  <NextActionCard
-                    routine={item.routine}
-                    count={item.count}
-                    maxCount={item.maxCount}
-                    onToggle={onToggle}
-                    enter={enter}
-                  />
-                </li>
-              ) : (
-                <li key={item.routine.id}>
-                  <FadedRow
-                    routine={item.routine}
-                    done={item.done}
-                    maxCount={item.maxCount}
-                    onToggle={onToggle}
-                  />
-                </li>
-              )
-            )}
-          </ul>
+          <TaskWheel
+            items={items}
+            activeIndex={items.findIndex((i) => i.routine.id === nextId)}
+            onToggle={onToggle}
+            reduced={reduced}
+          />
         )}
       </section>
 
@@ -195,95 +165,3 @@ function ProgressBar({ value }: { value: number }) {
   )
 }
 
-/** A completed or upcoming item — present, but out of the way. */
-function FadedRow({
-  routine,
-  done,
-  maxCount,
-  onToggle,
-}: {
-  routine: Routine
-  done: boolean
-  maxCount: number
-  onToggle: (routineId: string, maxCount: number) => void
-}) {
-  return (
-    <button
-      type="button"
-      onClick={() => {
-        tapHaptic()
-        onToggle(routine.id, maxCount)
-      }}
-      className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left opacity-55 transition-opacity hover:opacity-90"
-    >
-      <span
-        className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
-          done ? 'border-primary bg-primary text-primary-foreground' : 'border-muted-foreground/40'
-        }`}
-      >
-        {done && <Check className="h-3 w-3" />}
-      </span>
-      <span
-        className={`text-sm ${done ? 'text-muted-foreground line-through' : 'text-foreground'}`}
-      >
-        {routine.name}
-      </span>
-    </button>
-  )
-}
-
-/** The one thing to do next — big, bold, the focus of the screen. */
-function NextActionCard({
-  routine,
-  count,
-  maxCount,
-  onToggle,
-  enter,
-}: {
-  routine: Routine
-  count: number
-  maxCount: number
-  onToggle: (routineId: string, maxCount: number) => void
-  enter: string
-}) {
-  const remaining = maxCount - count
-  const mins = estimatedMinutes(routine)
-
-  const handleDone = () => {
-    tapHaptic()
-    onToggle(routine.id, maxCount)
-  }
-
-  return (
-    <Card className={`border-primary/30 ${enter}`}>
-      <CardContent className="py-7 space-y-5 text-center">
-        <div className="space-y-1">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">Next</p>
-          <h2 className="text-2xl font-semibold">{routine.name}</h2>
-          <p className="text-sm text-muted-foreground">
-            {routine.category ? `${routine.category} · ` : ''}
-            {formatFrequency(routine)}
-            {mins ? ` · ~${mins} min` : ''}
-          </p>
-          {routine.description && (
-            <p className="text-sm text-muted-foreground/70">{routine.description}</p>
-          )}
-          {maxCount > 1 && (
-            <p className="pt-1 text-sm font-medium text-primary">
-              {remaining === 1 ? 'Only 1 left' : `Only ${remaining} left`}
-            </p>
-          )}
-        </div>
-
-        <Button
-          size="lg"
-          className="h-14 w-full max-w-xs mx-auto text-base transition-transform duration-100 active:scale-95"
-          onClick={handleDone}
-        >
-          <Check className={`mr-2 h-5 w-5 ${enter ? 'animate-check-pop' : ''}`} />
-          {maxCount > 1 ? `Log one (${count}/${maxCount})` : 'Done'}
-        </Button>
-      </CardContent>
-    </Card>
-  )
-}

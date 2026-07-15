@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import type { Routine } from '@/types'
 import { formatFrequency } from '@/lib/routine-utils'
 import { tapHaptic } from '@/lib/haptics'
@@ -42,9 +43,41 @@ function estimatedMinutes(routine: Routine): number | null {
 export function TaskWheel({ items, activeIndex, onToggle, reduced }: TaskWheelProps) {
   const transition = reduced ? undefined : 'transform 450ms cubic-bezier(0.22,1,0.36,1), opacity 450ms'
 
+  // Focus follows the auto-centered next action, but scrolling over the wheel
+  // lets you browse — without scrolling the page.
+  const [focusIndex, setFocusIndex] = useState(activeIndex)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const accRef = useRef(0)
+
+  useEffect(() => {
+    setFocusIndex(activeIndex >= 0 ? activeIndex : 0)
+  }, [activeIndex])
+
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault() // keep the page still while the wheel spins
+      accRef.current += e.deltaY
+      const STEP = 40
+      if (accRef.current >= STEP) {
+        accRef.current = 0
+        setFocusIndex((i) => Math.min(items.length - 1, i + 1))
+      } else if (accRef.current <= -STEP) {
+        accRef.current = 0
+        setFocusIndex((i) => Math.max(0, i - 1))
+      }
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
+  }, [items.length])
+
+  const centerIndex = Math.min(Math.max(focusIndex, 0), items.length - 1)
+
   return (
     <div
-      className="relative mx-auto w-full select-none"
+      ref={containerRef}
+      className="relative mx-auto w-full select-none overscroll-contain"
       style={{ height: ROW_H * (MAX_OFFSET + 1.2), perspective: 720 }}
       aria-label="Today's tasks"
     >
@@ -56,7 +89,7 @@ export function TaskWheel({ items, activeIndex, onToggle, reduced }: TaskWheelPr
 
       <div className="absolute inset-0" style={{ transformStyle: 'preserve-3d' }}>
         {items.map((item, idx) => {
-          const offset = idx - activeIndex
+          const offset = idx - centerIndex
           if (Math.abs(offset) > MAX_OFFSET) return null
           const isCenter = offset === 0
           const opacity = isCenter ? 1 : Math.max(0.12, 1 - 0.32 * Math.abs(offset))

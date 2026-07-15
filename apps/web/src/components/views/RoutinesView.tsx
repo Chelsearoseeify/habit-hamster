@@ -1,4 +1,4 @@
-import type { Routine, Completion, Identity } from '@/types'
+import type { Routine, Completion, Identity, System } from '@/types'
 import { RoutineForm } from '@/components/routines/RoutineForm'
 import { Button } from '@/components/ui/button'
 import { Pencil, Trash2, Pause, Play } from 'lucide-react'
@@ -11,6 +11,7 @@ interface RoutinesViewProps {
   onEdit: (routine: Omit<Routine, 'id' | 'createdAt'>, id: string) => void
   onPause: (id: string, paused: boolean) => void
   identities?: Identity[]
+  systems?: System[]
 }
 
 const CATEGORY_COLORS: Record<string, string> = {
@@ -20,7 +21,7 @@ const CATEGORY_COLORS: Record<string, string> = {
   Supplements: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',
 }
 
-export function RoutinesView({ routines, completions, onDelete, onEdit, onPause, identities = [] }: RoutinesViewProps) {
+export function RoutinesView({ routines, completions, onDelete, onEdit, onPause, identities = [], systems = [] }: RoutinesViewProps) {
   if (routines.length === 0) {
     return (
       <div className="text-center py-12 text-muted-foreground">
@@ -110,6 +111,7 @@ export function RoutinesView({ routines, completions, onDelete, onEdit, onPause,
                     initialData={routine}
                     onSubmit={(data) => onEdit(data, routine.id)}
                     identities={identities}
+                    systems={systems}
                     trigger={
                       <Button variant="ghost" size="icon" className="shrink-0 h-8 w-8 text-muted-foreground hover:text-foreground">
                         <Pencil className="h-3.5 w-3.5" />

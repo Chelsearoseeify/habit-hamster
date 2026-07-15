@@ -1,5 +1,5 @@
 import { createClient } from '@libsql/client'
-import type { Routine, Completion, GamificationState, Identity, Reflection, Mood } from '@habit-hamster/types'
+import type { Routine, Completion, GamificationState, Identity, System, Reflection, Mood } from '@habit-hamster/types'
 
 export const db = createClient({
   url: process.env.TURSO_DATABASE_URL!,
@@ -18,6 +18,7 @@ export function rowToRoutine(row: Record<string, unknown>): Routine {
     createdAt: row.created_at as string,
     paused: (row.paused as number) === 1,
     identityId: (row.identity_id as string) ?? undefined,
+    systemId: (row.system_id as string) ?? undefined,
   }
 }
 
@@ -26,6 +27,16 @@ export function rowToIdentity(row: Record<string, unknown>): Identity {
     id: row.id as string,
     name: row.name as string,
     statement: (row.statement as string) ?? undefined,
+    createdAt: row.created_at as string,
+  }
+}
+
+export function rowToSystem(row: Record<string, unknown>): System {
+  return {
+    id: row.id as string,
+    name: row.name as string,
+    description: (row.description as string) ?? undefined,
+    identityId: (row.identity_id as string) ?? undefined,
     createdAt: row.created_at as string,
   }
 }

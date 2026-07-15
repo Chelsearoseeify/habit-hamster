@@ -6,6 +6,7 @@ import { completionsRouter } from './routes/completions.js'
 import { gamificationRouter } from './routes/gamification.js'
 import { pushRouter } from './routes/push.js'
 import { identitiesRouter } from './routes/identities.js'
+import { systemsRouter } from './routes/systems.js'
 import { reflectionsRouter } from './routes/reflections.js'
 import { cronRouter } from './cron/notify.js'
 
@@ -27,6 +28,7 @@ app.route('/completions', completionsRouter)
 app.route('/gamification', gamificationRouter)
 app.route('/push', pushRouter)
 app.route('/identities', identitiesRouter)
+app.route('/systems', systemsRouter)
 app.route('/reflections', reflectionsRouter)
 app.route('/cron', cronRouter)
 

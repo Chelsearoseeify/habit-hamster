@@ -1,4 +1,4 @@
-import type { Routine, Completion, GamificationState, PushSubscriptionPayload, Identity, Reflection, Mood } from '@/types'
+import type { Routine, Completion, GamificationState, PushSubscriptionPayload, Identity, System, Reflection, Mood } from '@/types'
 
 const API_BASE = import.meta.env.VITE_API_URL ?? '/api'
 
@@ -81,6 +81,24 @@ export function updateIdentity(id: string, updates: Partial<Omit<Identity, 'id' 
 
 export function deleteIdentity(id: string): Promise<void> {
   return request<void>(`/identities/${id}`, { method: 'DELETE' })
+}
+
+// --- Systems ---
+
+export function getSystems(): Promise<System[]> {
+  return request<System[]>('/systems')
+}
+
+export function createSystem(system: Omit<System, 'id' | 'createdAt'>): Promise<System> {
+  return request<System>('/systems', { method: 'POST', body: JSON.stringify(system) })
+}
+
+export function updateSystem(id: string, updates: Partial<Omit<System, 'id' | 'createdAt'>>): Promise<System> {
+  return request<System>(`/systems/${id}`, { method: 'PATCH', body: JSON.stringify(updates) })
+}
+
+export function deleteSystem(id: string): Promise<void> {
+  return request<void>(`/systems/${id}`, { method: 'DELETE' })
 }
 
 // --- Reflections ---

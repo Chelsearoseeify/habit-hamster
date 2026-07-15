@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { Routine, Completion, Identity, Reflection, Mood } from '@/types'
+import type { Routine, Completion, Identity, System, Reflection, Mood } from '@/types'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { IdentityCard } from '@/components/identity/IdentityCard'
@@ -19,6 +19,7 @@ interface NowViewProps {
   routines: Routine[]
   completions: Completion[]
   identities: Identity[]
+  systems: System[]
   todayStats: { total: number; completed: number; percentage: number }
   consistency: { activeDays: number; daysElapsed: number; monthlyConsistency: number }
   onToggle: (routineId: string, maxCount: number) => void
@@ -39,6 +40,7 @@ export function NowView({
   routines,
   completions,
   identities,
+  systems,
   todayStats,
   consistency,
   onToggle,
@@ -54,6 +56,9 @@ export function NowView({
   )
   const block = currentBlock(blocks)
   const nextAction = block?.remaining[0] ?? null
+  const nextSystem = nextAction?.systemId
+    ? systems.find((s) => s.id === nextAction.systemId)
+    : undefined
 
   // Calm hand-off when the user clears a block and a later one takes over.
   const [handoff, setHandoff] = useState<{ done: BlockName; next: BlockName } | null>(null)
@@ -120,6 +125,11 @@ export function NowView({
             onToggle={onToggle}
             enter={enter}
           />
+          {nextSystem && (
+            <p className="text-center text-xs text-muted-foreground/70">
+              Part of your {nextSystem.name} — trust the system.
+            </p>
+          )}
         </div>
       ) : (
         <Card key="done" className={enter}>

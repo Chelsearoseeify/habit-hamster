@@ -10,6 +10,7 @@ import { MonthView } from '@/components/views/MonthView'
 import { YearView } from '@/components/views/YearView'
 import { RoutinesView } from '@/components/views/RoutinesView'
 import { IdentityManager } from '@/components/identity/IdentityManager'
+import { SystemManager } from '@/components/systems/SystemManager'
 import { LevelCard } from '@/components/gamification/LevelCard'
 import { AchievementsPanel } from '@/components/gamification/AchievementsPanel'
 import { NotificationSettings } from '@/components/notifications/NotificationSettings'
@@ -18,6 +19,7 @@ import { useCompletions } from '@/hooks/useCompletions'
 import { useStats } from '@/hooks/useStats'
 import { useGamification } from '@/hooks/useGamification'
 import { useIdentities } from '@/hooks/useIdentities'
+import { useSystems } from '@/hooks/useSystems'
 import { useReflections } from '@/hooks/useReflections'
 import { useConsistency } from '@/hooks/useConsistency'
 import { getToday } from '@/lib/date-utils'
@@ -31,6 +33,7 @@ function App() {
   const { completions, toggleCompletion } = useCompletions()
   const { todayStats, streak } = useStats(routines, completions)
   const { identities, addIdentity, deleteIdentity } = useIdentities()
+  const { systems, addSystem, deleteSystem } = useSystems()
   const { getReflectionForDate, setReflection } = useReflections()
   const consistency = useConsistency(routines, completions)
 
@@ -117,7 +120,7 @@ function App() {
           </div>
           <div className="flex items-center gap-1">
             <NotificationSettings onEnabledChange={() => {}} />
-            <RoutineForm onSubmit={addRoutine} identities={identities} />
+            <RoutineForm onSubmit={addRoutine} identities={identities} systems={systems} />
           </div>
         </header>
 
@@ -127,6 +130,7 @@ function App() {
               routines={routines}
               completions={completions}
               identities={identities}
+              systems={systems}
               todayStats={todayStats}
               consistency={consistency}
               onToggle={handleToggle}
@@ -273,6 +277,13 @@ function App() {
                       onAdd={addIdentity}
                       onDelete={deleteIdentity}
                     />
+                    <SystemManager
+                      systems={systems}
+                      identities={identities}
+                      routines={routines}
+                      onAdd={addSystem}
+                      onDelete={deleteSystem}
+                    />
                     <RoutinesView
                       routines={routines}
                       completions={completions}
@@ -280,6 +291,7 @@ function App() {
                       onEdit={(data, id) => updateRoutine(id, data)}
                       onPause={(id, paused) => updateRoutine(id, { paused })}
                       identities={identities}
+                      systems={systems}
                     />
                   </CardContent>
                 </Card>

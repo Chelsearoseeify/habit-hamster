@@ -12,7 +12,7 @@ below on completion.
 |---|-----------|--------|-------|
 | 1 | Reduce decision fatigue | ✅ | `NowView` single next action + est. minutes |
 | 2 | Identity before habits | ✅ | `IdentityCard` votes, `identity-utils` |
-| 3 | Systems over goals | ❌ | no System layer yet |
+| 3 | Systems over goals | ✅ | `System` entity, `SystemManager`, Now framing (Phase 4) |
 | 4 | Chunking (routine blocks) | ✅ | `lib/blocks.ts` time-of-day blocks, one at a time (Phase 3) |
 | 5 | Progressive disclosure | ✅ | Now home + "More & stats" |
 | 6 | Goal gradient | ✅ | "Only N left" in `NextActionCard` |
@@ -73,17 +73,29 @@ flow was prioritised over global urgency ranking; revisit if it feels wrong.
 
 ---
 
-## ⏳ Phase 4 — Systems Layer (principle 3, data hierarchy)
+## ✅ Phase 4 — Systems Layer (principle 3, shipped — Option A)
 
-Introduce the missing **System** level so the model matches the vision:
-`Identity → System → Routine → Habit → Completion`.
+Added the **System** level: `Identity → System → Routine → Completion`. Kept code
+names (no Routine→Habit rename); docs note code `Routine` = vision's `Habit`.
 
-**Naming decision (needs a call before coding — see below).**
+- `packages/types`: `System { id, name, description?, identityId?, createdAt }`;
+  `Routine.systemId?`.
+- `apps/api`: `systems` table (created before routines for FK order),
+  `routines.system_id` FK `ON DELETE SET NULL`, `rowToSystem`, systems router
+  (CRUD), routines router handles `systemId`.
+- `apps/web`: `useSystems` hook, api/storage wiring, `SystemManager` (in All tab,
+  optional "serves identity" link), RoutineForm system picker, Now shows
+  "Part of your <system> — trust the system." under the next action.
 
-- `packages/types`: add `System` (and resolve Routine/Habit naming).
-- `apps/api`: `systems` table, mappers, router; FK wiring.
-- `apps/web`: `useSystems` hook; light system framing in Now ("I trust my system"),
-  no dashboard.
+**⚠️ DB migration required** (Turso not auto-migrated). Run once:
+```sql
+CREATE TABLE IF NOT EXISTS systems (
+  id TEXT PRIMARY KEY, name TEXT NOT NULL, description TEXT,
+  identity_id TEXT REFERENCES identities(id) ON DELETE SET NULL,
+  created_at TEXT NOT NULL
+);
+ALTER TABLE routines ADD COLUMN system_id TEXT REFERENCES systems(id) ON DELETE SET NULL;
+```
 
 ---
 

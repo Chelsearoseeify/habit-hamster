@@ -15,6 +15,7 @@ export interface Routine {
   createdAt: string
   paused?: boolean
   identityId?: string | null
+  systemId?: string | null
 }
 
 export interface Completion {
@@ -28,6 +29,18 @@ export interface Identity {
   id: string
   name: string
   statement?: string
+  createdAt: string
+}
+
+/**
+ * A repeatable system that serves an identity — the layer between Identity and
+ * Routine (Identity → System → Routine → Completion). "Systems over goals."
+ */
+export interface System {
+  id: string
+  name: string
+  description?: string
+  identityId?: string | null
   createdAt: string
 }
 

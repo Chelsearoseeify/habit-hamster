@@ -14,8 +14,8 @@ routinesRouter.post('/', async (c) => {
   const id = crypto.randomUUID()
   const createdAt = new Date().toISOString()
   await db.execute({
-    sql: `INSERT INTO routines (id, name, category, frequency, time_range, preferred_days, description, created_at, paused, identity_id)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    sql: `INSERT INTO routines (id, name, category, frequency, time_range, preferred_days, description, created_at, paused, identity_id, system_id)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
       id,
       body.name,
@@ -27,6 +27,7 @@ routinesRouter.post('/', async (c) => {
       createdAt,
       0,
       body.identityId ?? null,
+      body.systemId ?? null,
     ],
   })
   const result = await db.execute({ sql: 'SELECT * FROM routines WHERE id = ?', args: [id] })
@@ -48,6 +49,7 @@ routinesRouter.patch('/:id', async (c) => {
   if ('description' in body) { fields.push('description = ?'); args.push(body.description ?? null) }
   if (body.paused !== undefined) { fields.push('paused = ?'); args.push(body.paused ? 1 : 0) }
   if ('identityId' in body) { fields.push('identity_id = ?'); args.push(body.identityId ?? null) }
+  if ('systemId' in body) { fields.push('system_id = ?'); args.push(body.systemId ?? null) }
 
   if (fields.length === 0) return c.json({ error: 'No fields to update' }, 400)
 

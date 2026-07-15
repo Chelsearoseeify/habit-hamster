@@ -5,6 +5,14 @@ CREATE TABLE IF NOT EXISTS identities (
   created_at  TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS systems (
+  id           TEXT PRIMARY KEY,
+  name         TEXT NOT NULL,
+  description  TEXT,
+  identity_id  TEXT REFERENCES identities(id) ON DELETE SET NULL,
+  created_at   TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS routines (
   id           TEXT PRIMARY KEY,
   name         TEXT NOT NULL,
@@ -15,12 +23,15 @@ CREATE TABLE IF NOT EXISTS routines (
   description  TEXT,
   created_at   TEXT NOT NULL,
   paused       INTEGER NOT NULL DEFAULT 0,
-  identity_id  TEXT REFERENCES identities(id) ON DELETE SET NULL
+  identity_id  TEXT REFERENCES identities(id) ON DELETE SET NULL,
+  system_id    TEXT REFERENCES systems(id) ON DELETE SET NULL
 );
 
--- Migration for existing databases (routines table already created without identity_id).
--- Run ONCE by hand; ADD COLUMN is not idempotent and errors if the column already exists:
+-- Migrations for existing databases. Run ONCE by hand; ADD COLUMN is not
+-- idempotent and errors if the column already exists:
 --   ALTER TABLE routines ADD COLUMN identity_id TEXT REFERENCES identities(id) ON DELETE SET NULL;
+--   ALTER TABLE routines ADD COLUMN system_id TEXT REFERENCES systems(id) ON DELETE SET NULL;
+-- (create the systems table first, above.)
 
 CREATE TABLE IF NOT EXISTS reflections (
   date  TEXT PRIMARY KEY,

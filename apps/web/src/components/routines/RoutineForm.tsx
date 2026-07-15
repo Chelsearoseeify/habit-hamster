@@ -18,17 +18,19 @@ import {
 } from '@/components/ui/select'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Checkbox } from '@/components/ui/checkbox'
-import type { Routine, FrequencyType, Identity } from '@/types'
+import type { Routine, FrequencyType, Identity, System } from '@/types'
 import { CATEGORIES } from '@/types'
 import { Plus } from 'lucide-react'
 
 const NO_IDENTITY = 'none'
+const NO_SYSTEM = 'none'
 
 interface RoutineFormProps {
   onSubmit: (routine: Omit<Routine, 'id' | 'createdAt'>) => void
   initialData?: Routine
   trigger?: React.ReactNode
   identities?: Identity[]
+  systems?: System[]
 }
 
 const WEEKDAYS = [
@@ -41,11 +43,12 @@ const WEEKDAYS = [
   { value: 7, label: 'Sun' },
 ]
 
-export function RoutineForm({ onSubmit, initialData, trigger, identities = [] }: RoutineFormProps) {
+export function RoutineForm({ onSubmit, initialData, trigger, identities = [], systems = [] }: RoutineFormProps) {
   const [open, setOpen] = useState(false)
   const [name, setName] = useState(initialData?.name ?? '')
   const [category, setCategory] = useState(initialData?.category ?? CATEGORIES[0])
   const [identityId, setIdentityId] = useState<string>(initialData?.identityId ?? NO_IDENTITY)
+  const [systemId, setSystemId] = useState<string>(initialData?.systemId ?? NO_SYSTEM)
   const [frequencyType, setFrequencyType] = useState<FrequencyType['type']>(
     initialData?.frequency.type ?? 'daily'
   )
@@ -89,7 +92,7 @@ export function RoutineForm({ onSubmit, initialData, trigger, identities = [] }:
     const timeRange = timeStart
       ? { start: timeStart, ...(timeEnd ? { end: timeEnd } : {}) }
       : undefined
-    onSubmit({ name: name.trim(), category, frequency, timeRange, preferredDays: preferredDays.length > 0 ? preferredDays : undefined, description: description.trim() || undefined, identityId: identityId === NO_IDENTITY ? null : identityId })
+    onSubmit({ name: name.trim(), category, frequency, timeRange, preferredDays: preferredDays.length > 0 ? preferredDays : undefined, description: description.trim() || undefined, identityId: identityId === NO_IDENTITY ? null : identityId, systemId: systemId === NO_SYSTEM ? null : systemId })
     setOpen(false)
     resetForm()
   }
@@ -99,6 +102,7 @@ export function RoutineForm({ onSubmit, initialData, trigger, identities = [] }:
       setName('')
       setCategory(CATEGORIES[0])
       setIdentityId(NO_IDENTITY)
+      setSystemId(NO_SYSTEM)
       setFrequencyType('daily')
       setTimesPerDay(1)
       setTimesPerWeek(3)
@@ -182,6 +186,25 @@ export function RoutineForm({ onSubmit, initialData, trigger, identities = [] }:
                   {identities.map((identity) => (
                     <SelectItem key={identity.id} value={identity.id}>
                       {identity.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {systems.length > 0 && (
+            <div className="space-y-2">
+              <Label htmlFor="system">System (optional)</Label>
+              <Select value={systemId} onValueChange={setSystemId}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value={NO_SYSTEM}>None</SelectItem>
+                  {systems.map((system) => (
+                    <SelectItem key={system.id} value={system.id}>
+                      {system.name}
                     </SelectItem>
                   ))}
                 </SelectContent>

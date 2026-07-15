@@ -295,6 +295,7 @@ function App() {
                       onAdd={addIdentity}
                       onEdit={updateIdentity}
                       onDelete={deleteIdentity}
+                      onAssignRoutine={(routineId, identityId) => updateRoutine(routineId, { identityId })}
                     />
                     <SystemManager
                       systems={systems}

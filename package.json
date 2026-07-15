@@ -4,9 +4,12 @@
   "scripts": {
     "dev": "turbo dev",
     "build": "turbo build",
+    "build:netlify": "turbo build && pnpm bundle:fn",
+    "bundle:fn": "esbuild apps/api/src/fn.ts --bundle --platform=node --format=esm --target=node22 --external:@libsql/client --outfile=netlify/functions/api.mjs",
     "lint": "turbo lint"
   },
   "devDependencies": {
+    "esbuild": "0.27.0",
     "turbo": "^2.0.0"
   },
   "packageManager": "pnpm@10.30.3",

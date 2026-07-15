@@ -2,18 +2,17 @@
 # settings (npm run build / publish dir "dist") left over from the pre-monorepo,
 # single-app layout. The web app now builds via turbo and outputs to apps/web/dist.
 [build]
-  command = "pnpm build"
+  command = "pnpm build:netlify"
   publish = "apps/web/dist"
   functions = "netlify/functions"
 
 [build.environment]
   NODE_VERSION = "22"
 
-# The Hono API runs as a v2 function; it bundles the TypeScript source (incl. the
-# .js-specifier imports and @libsql/client / web-push deps) via esbuild.
+# The Hono API is pre-bundled by `pnpm bundle:fn` (esbuild) into
+# netlify/functions/api.mjs with hono/web-push inlined — pnpm's symlinked layout
+# makes Netlify's own bundler leave those external and unresolved. We ship the
+# prebuilt file as-is; @libsql/client is external and installed via the
+# netlify/functions/package.json.
 [functions]
-  node_bundler = "esbuild"
-
-[functions."api"]
-  # Keep the native libsql client external so Netlify installs its platform binary.
-  external_node_modules = ["@libsql/client"]
+  node_bundler = "none"

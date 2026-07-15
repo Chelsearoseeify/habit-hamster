@@ -1,4 +1,6 @@
-import { createClient } from '@libsql/client'
+// Use the web (pure-JS hrana) client: no native binary, bundles cleanly into the
+// serverless function and works with remote Turso over the network. Fine in Node 22.
+import { createClient } from '@libsql/client/web'
 import type { Routine, Completion, GamificationState, Identity, System, SystemRulePeriod, SystemRuleType, Reflection, Mood } from '@habit-hamster/types'
 
 export const db = createClient({

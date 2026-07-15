@@ -15,6 +15,7 @@ import { SystemManager } from '@/components/systems/SystemManager'
 import { LevelCard } from '@/components/gamification/LevelCard'
 import { AchievementsPanel } from '@/components/gamification/AchievementsPanel'
 import { NotificationSettings } from '@/components/notifications/NotificationSettings'
+import { GreetingHeader } from '@/components/GreetingHeader'
 import { useRoutines } from '@/hooks/useRoutines'
 import { useCompletions } from '@/hooks/useCompletions'
 import { useStats } from '@/hooks/useStats'
@@ -66,6 +67,15 @@ function App() {
   const usedCategories = [...new Set(routines.map((r) => r.category).filter(Boolean))]
   const isNow = view === 'now'
 
+  // Identity as the greeting's "why" — prefer one with a statement, else any
+  // identity that has routines; fall back to a gentle default.
+  const linkedIdentity =
+    identities.find((i) => i.statement?.trim() && routines.some((r) => r.identityId === i.id)) ??
+    identities.find((i) => routines.some((r) => r.identityId === i.id))
+  const identityWhy =
+    linkedIdentity?.statement?.trim() ||
+    (linkedIdentity ? `Someone becoming ${linkedIdentity.name}` : 'Today matters.')
+
   // Auto-dismiss celebrations after 4 seconds
   useEffect(() => {
     if (newAchievement) {
@@ -113,13 +123,15 @@ function App() {
           </div>
         )}
 
-        <header className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">Habit Hamster</h1>
-            <p className="text-sm text-muted-foreground">
-              {isNow ? 'Your next step' : 'Track your daily routines'}
-            </p>
-          </div>
+        <header className="flex items-start justify-between gap-3">
+          {isNow ? (
+            <GreetingHeader why={identityWhy} />
+          ) : (
+            <div>
+              <h1 className="text-2xl font-bold">Habit Hamster</h1>
+              <p className="text-sm text-muted-foreground">Track your daily routines</p>
+            </div>
+          )}
           <div className="flex items-center gap-1">
             <NotificationSettings onEnabledChange={() => {}} />
             <RoutineForm onSubmit={addRoutine} identities={identities} systems={systems} categories={usedCategories} />

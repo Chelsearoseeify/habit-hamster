@@ -1,19 +1,14 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo } from 'react'
 import type { Routine, Completion, Identity, System, Reflection, Mood } from '@/types'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { IdentityCard } from '@/components/identity/IdentityCard'
 import { MoodSelector } from '@/components/reflection/MoodSelector'
-import { getMaxCountForRoutine } from '@/hooks/useCompletions'
-import { votesByIdentity } from '@/lib/identity-utils'
+import { getMaxCountForRoutine, isRoutineDueOnDate } from '@/hooks/useCompletions'
+import { identityTodayProgress } from '@/lib/identity-utils'
 import { formatFrequency } from '@/lib/routine-utils'
-import { buildDayBlocks, currentBlock, type BlockName } from '@/lib/blocks'
-import { systemMembers, systemStatus } from '@/lib/systems'
-import { SystemNowCard } from '@/components/systems/SystemNowCard'
-import { generateInsights } from '@/lib/insights'
+import { blockForRoutine, BLOCK_ORDER } from '@/lib/blocks'
 import { getToday } from '@/lib/date-utils'
 import { useReducedMotion } from '@/hooks/useReducedMotion'
-import { useCountUp } from '@/hooks/useCountUp'
 import { tapHaptic } from '@/lib/haptics'
 import { Check } from 'lucide-react'
 
@@ -21,6 +16,7 @@ interface NowViewProps {
   routines: Routine[]
   completions: Completion[]
   identities: Identity[]
+  // Kept for prop compatibility with App; systems live in "More & stats" now.
   systems: System[]
   todayStats: { total: number; completed: number; percentage: number }
   consistency: { activeDays: number; daysElapsed: number; monthlyConsistency: number }
@@ -38,195 +34,219 @@ function estimatedMinutes(routine: Routine): number | null {
   return mins > 0 ? mins : null
 }
 
+const BLOCK_WEIGHT: Record<string, number> = Object.fromEntries(
+  BLOCK_ORDER.map((b, i) => [b, i])
+)
+
 export function NowView({
   routines,
   completions,
   identities,
-  systems,
   todayStats,
-  consistency,
   onToggle,
   getReflectionForDate,
   setReflection,
 }: NowViewProps) {
   const today = getToday()
+  const reduced = useReducedMotion()
+  const enter = reduced ? '' : 'animate-now-enter'
 
-  // Systems are rules over member routines. Members are represented by their
-  // system card, not as individual next-actions — pull them out of the flow.
-  const activeSystems = useMemo(
-    () => systems.map((s) => ({ system: s, members: systemMembers(s.id, routines) }))
-      .filter((x) => x.members.length > 0),
-    [systems, routines]
-  )
-  const memberIds = useMemo(() => {
-    const set = new Set<string>()
-    for (const { members } of activeSystems) for (const m of members) set.add(m.id)
-    return set
-  }, [activeSystems])
-  const standalone = useMemo(
-    () => routines.filter((r) => !memberIds.has(r.id)),
-    [routines, memberIds]
-  )
-
-  // Chunking: reveal one time-of-day block at a time (principle 4).
-  const blocks = useMemo(
-    () => buildDayBlocks(standalone, completions, today),
-    [standalone, completions, today]
-  )
-  const block = currentBlock(blocks)
-  const nextAction = block?.remaining[0] ?? null
-
-  const anyPendingSystem = activeSystems.some(
-    ({ system, members }) => !systemStatus(system, members, completions).satisfied
+  // The day as one chronological list: time-of-day block, then start time.
+  const dueToday = useMemo(
+    () =>
+      routines
+        .filter((r) => isRoutineDueOnDate(r, today, completions))
+        .sort((a, b) => {
+          const wa = BLOCK_WEIGHT[blockForRoutine(a)]
+          const wb = BLOCK_WEIGHT[blockForRoutine(b)]
+          if (wa !== wb) return wa - wb
+          return (a.timeRange?.start ?? '99:99').localeCompare(
+            b.timeRange?.start ?? '99:99'
+          )
+        }),
+    [routines, completions, today]
   )
 
-  // Calm hand-off when the user clears a block and a later one takes over.
-  const [handoff, setHandoff] = useState<{ done: BlockName; next: BlockName } | null>(null)
-  const prevBlock = useRef<BlockName | null>(block?.name ?? null)
-  useEffect(() => {
-    const prev = prevBlock.current
-    const now = block?.name ?? null
-    if (prev && now && prev !== now) {
-      setHandoff({ done: prev, next: now })
-      prevBlock.current = now
-      const t = setTimeout(() => setHandoff(null), 2600)
-      return () => clearTimeout(t)
-    }
-    prevBlock.current = now
-  }, [block?.name])
+  const items = dueToday.map((r) => {
+    const maxCount = getMaxCountForRoutine(r)
+    const count =
+      completions.find((c) => c.routineId === r.id && c.date === today)?.count ?? 0
+    return { routine: r, maxCount, count, done: count >= maxCount }
+  })
 
-  const votes = useMemo(
-    () => votesByIdentity(identities, routines, completions),
-    [identities, routines, completions]
-  )
-  const insights = useMemo(
-    () => generateInsights(routines, completions),
-    [routines, completions]
+  const nextId = items.find((i) => !i.done)?.routine.id ?? null
+
+  // Identities you're living up to today — meaning first, no points.
+  const identityProgress = useMemo(
+    () =>
+      identities
+        .map((identity) => ({
+          identity,
+          progress: identityTodayProgress(identity.id, routines, completions, today),
+        }))
+        .filter((x) => x.progress.total > 0),
+    [identities, routines, completions, today]
   )
 
   const reflection = getReflectionForDate(today)
 
-  const reduced = useReducedMotion()
-  const enter = reduced ? '' : 'animate-now-enter'
-  const completedCount = useCountUp(todayStats.completed)
-  const activeDays = useCountUp(consistency.activeDays)
-  const monthlyConsistency = useCountUp(consistency.monthlyConsistency)
-
-  // Identities served by a system are shown inside that system's card, so the
-  // top list keeps only linked identities WITHOUT a system (no duplication).
-  const systemServedIdentityIds = new Set(
-    activeSystems.map(({ system }) => system.identityId).filter(Boolean)
-  )
-  const linkedIdentities = identities.filter(
-    (i) => routines.some((r) => r.identityId === i.id) && !systemServedIdentityIds.has(i.id)
-  )
-
   return (
-    <div className="space-y-6">
-      {linkedIdentities.length > 0 && (
-        <div className="space-y-3">
-          {linkedIdentities.map((identity) => (
-            <IdentityCard key={identity.id} identity={identity} votes={votes[identity.id] ?? 0} />
-          ))}
-        </div>
-      )}
+    <div className="space-y-8">
+      {/* 2. Today — focused list. Next action is loud; the rest recedes. */}
+      <section className="space-y-3">
+        <h2 className="text-xs uppercase tracking-wide text-muted-foreground">
+          Today
+        </h2>
 
-      {activeSystems.length > 0 && (
-        <div className="space-y-3">
-          {activeSystems.map(({ system, members }) => (
-            <SystemNowCard
-              key={system.id}
-              system={system}
-              members={members}
-              completions={completions}
-              identity={system.identityId ? identities.find((i) => i.id === system.identityId) : undefined}
-              votes={system.identityId ? votes[system.identityId] ?? 0 : 0}
-              onToggle={onToggle}
-              enter={enter}
-            />
-          ))}
-        </div>
-      )}
-
-      {handoff && (
-        <p className={`text-center text-sm font-medium text-primary ${enter}`}>
-          {handoff.done} done — {handoff.next} is next.
-        </p>
-      )}
-
-      {nextAction && block ? (
-        <div className="space-y-3">
-          <p className="text-center text-xs uppercase tracking-wide text-muted-foreground">
-            {block.name} · <span className="tabular-nums">{block.completed} of {block.total} done</span>
-          </p>
-          <NextActionCard
-            key={nextAction.id}
-            routine={nextAction}
-            completions={completions}
-            onToggle={onToggle}
-            enter={enter}
-          />
-        </div>
-      ) : (
-        !anyPendingSystem && (
-          <Card key="done" className={enter}>
+        {items.length === 0 ? (
+          <Card className={enter}>
             <CardContent className="py-8 text-center space-y-1">
-              <p className="text-lg font-medium">You're done for now.</p>
-              <p className="text-sm text-muted-foreground">Nothing else needs you right now. Rest easy.</p>
+              <p className="text-lg font-medium">Nothing due today.</p>
+              <p className="text-sm text-muted-foreground">Rest easy.</p>
             </CardContent>
           </Card>
-        )
-      )}
+        ) : nextId === null ? (
+          <Card className={enter}>
+            <CardContent className="py-8 text-center space-y-1">
+              <p className="text-lg font-medium">You're done for today. 🎉</p>
+              <p className="text-sm text-muted-foreground">
+                Every one of them was a vote for who you're becoming.
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <ul className="space-y-2">
+            {items.map((item) =>
+              item.routine.id === nextId ? (
+                <li key={item.routine.id}>
+                  <NextActionCard
+                    routine={item.routine}
+                    count={item.count}
+                    maxCount={item.maxCount}
+                    onToggle={onToggle}
+                    enter={enter}
+                  />
+                </li>
+              ) : (
+                <li key={item.routine.id}>
+                  <FadedRow
+                    routine={item.routine}
+                    done={item.done}
+                    maxCount={item.maxCount}
+                    onToggle={onToggle}
+                  />
+                </li>
+              )
+            )}
+          </ul>
+        )}
+      </section>
 
+      {/* 3. Progress — a quiet bar, no big numbers. */}
       {todayStats.total > 0 && (
-        <p className="text-center text-sm text-muted-foreground tabular-nums">
-          {completedCount} of {todayStats.total} done today
-        </p>
+        <section className="space-y-1.5">
+          <div className="flex items-center justify-between text-xs text-muted-foreground">
+            <span className="uppercase tracking-wide">Today</span>
+            <span className="tabular-nums">{todayStats.percentage}%</span>
+          </div>
+          <ProgressBar value={todayStats.percentage} />
+        </section>
       )}
 
-      <Card>
-        <CardContent className="py-5">
-          <MoodSelector
-            reflection={reflection}
-            onChange={(mood, note) => setReflection(today, mood, note)}
-          />
-        </CardContent>
-      </Card>
-
-      {consistency.daysElapsed > 0 && (
-        <p className="text-center text-sm text-muted-foreground tabular-nums">
-          You've shown up {activeDays} of {consistency.daysElapsed} days this month
-          {' — '}
-          {monthlyConsistency}%
-        </p>
-      )}
-
-      {insights.length > 0 && (
-        <div className="space-y-1 text-center">
-          {insights.slice(0, 2).map((line, i) => (
-            <p key={i} className="text-sm text-muted-foreground">{line}</p>
+      {/* 4. Identity progress — meaning, not points. */}
+      {identityProgress.length > 0 && (
+        <section className="space-y-4">
+          {identityProgress.map(({ identity, progress }) => (
+            <div key={identity.id} className="space-y-1.5">
+              <div className="flex items-baseline justify-between gap-3">
+                <p className="text-sm font-medium leading-snug">
+                  <span className="mr-1.5">✨</span>
+                  {identity.statement?.trim() || `Becoming ${identity.name}`}
+                </p>
+                <span className="text-xs tabular-nums text-muted-foreground shrink-0">
+                  {progress.percentage}% today
+                </span>
+              </div>
+              <ProgressBar value={progress.percentage} />
+            </div>
           ))}
-        </div>
+        </section>
       )}
+
+      {/* 5. Reflection — one gentle line. */}
+      <section>
+        <MoodSelector
+          reflection={reflection}
+          onChange={(mood, note) => setReflection(today, mood, note)}
+        />
+      </section>
     </div>
   )
 }
 
+function ProgressBar({ value }: { value: number }) {
+  return (
+    <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+      <div
+        className="h-full rounded-full bg-primary transition-[width] duration-500"
+        style={{ width: `${Math.min(100, Math.max(0, value))}%` }}
+      />
+    </div>
+  )
+}
+
+/** A completed or upcoming item — present, but out of the way. */
+function FadedRow({
+  routine,
+  done,
+  maxCount,
+  onToggle,
+}: {
+  routine: Routine
+  done: boolean
+  maxCount: number
+  onToggle: (routineId: string, maxCount: number) => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        tapHaptic()
+        onToggle(routine.id, maxCount)
+      }}
+      className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left opacity-55 transition-opacity hover:opacity-90"
+    >
+      <span
+        className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
+          done ? 'border-primary bg-primary text-primary-foreground' : 'border-muted-foreground/40'
+        }`}
+      >
+        {done && <Check className="h-3 w-3" />}
+      </span>
+      <span
+        className={`text-sm ${done ? 'text-muted-foreground line-through' : 'text-foreground'}`}
+      >
+        {routine.name}
+      </span>
+    </button>
+  )
+}
+
+/** The one thing to do next — big, bold, the focus of the screen. */
 function NextActionCard({
   routine,
-  completions,
+  count,
+  maxCount,
   onToggle,
   enter,
 }: {
   routine: Routine
-  completions: Completion[]
+  count: number
+  maxCount: number
   onToggle: (routineId: string, maxCount: number) => void
   enter: string
 }) {
-  const today = getToday()
-  const maxCount = getMaxCountForRoutine(routine)
-  const current = completions.find((c) => c.routineId === routine.id && c.date === today)?.count ?? 0
-  const remaining = maxCount - current
+  const remaining = maxCount - count
   const mins = estimatedMinutes(routine)
 
   const handleDone = () => {
@@ -236,7 +256,7 @@ function NextActionCard({
 
   return (
     <Card className={`border-primary/30 ${enter}`}>
-      <CardContent className="py-8 space-y-5 text-center">
+      <CardContent className="py-7 space-y-5 text-center">
         <div className="space-y-1">
           <p className="text-xs uppercase tracking-wide text-muted-foreground">Next</p>
           <h2 className="text-2xl font-semibold">{routine.name}</h2>
@@ -261,7 +281,7 @@ function NextActionCard({
           onClick={handleDone}
         >
           <Check className={`mr-2 h-5 w-5 ${enter ? 'animate-check-pop' : ''}`} />
-          {maxCount > 1 ? `Log one (${current}/${maxCount})` : 'Done'}
+          {maxCount > 1 ? `Log one (${count}/${maxCount})` : 'Done'}
         </Button>
       </CardContent>
     </Card>

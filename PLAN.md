@@ -23,8 +23,8 @@ below on completion.
 | 11 | Insights over statistics | ✅ | `generateInsights` surfaced in Now |
 | 12 | Calm productivity | ✅ | tone throughout |
 
-Remaining gaps: **3 (systems), 4 (chunking), 8 (immediate reward), 10 (reviews)**,
-plus the Behaviour Design System doc.
+**All 12 principles shipped.** Behaviour Design System doc lives at
+`apps/web/BEHAVIOUR_DS.md`.
 
 ---
 
@@ -108,12 +108,13 @@ Calm periodic review that interprets the window — no charts, no guilt.
 
 ---
 
-## ⏳ Phase 6 — Behaviour Design System doc
+## ✅ Phase 6 — Behaviour Design System doc (shipped)
 
-Document each behaviour-bearing component with Purpose / Psychological principle /
-Desired emotion / Interaction / Animation (format in `VISION.md`). Living doc, e.g.
-`apps/web/BEHAVIOUR_DS.md`, covering IdentityCard, NextActionCard, MoodSelector,
-consistency line, insights, and new Phase 2–5 components.
+`apps/web/BEHAVIOUR_DS.md` — documents each behaviour-bearing component on five
+axes (Purpose / Principle / Emotion / Interaction / Animation) plus the shared
+reward primitives. Covers NextActionCard, block header/hand-off, IdentityCard,
+MoodSelector, consistency/insight lines, ReviewView, System/IdentityManager,
+RoutineForm, and a checklist for adding new components.
 
 ---
 

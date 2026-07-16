@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import type { Routine, Completion, Identity, System, Reflection, Mood } from '@/types'
 import { Card, CardContent } from '@/components/ui/card'
 import { MoodSelector } from '@/components/reflection/MoodSelector'
-import { TaskWheel } from '@/components/views/TaskWheel'
+import { TodayTimeline } from '@/components/views/TodayTimeline'
 import { getMaxCountForRoutine, isRoutineDueOnDate } from '@/hooks/useCompletions'
 import { identityTodayProgress } from '@/lib/identity-utils'
 import { blockForRoutine, BLOCK_ORDER } from '@/lib/blocks'
@@ -103,9 +103,9 @@ export function NowView({
             </CardContent>
           </Card>
         ) : (
-          <TaskWheel
+          <TodayTimeline
             items={items}
-            activeIndex={items.findIndex((i) => i.routine.id === nextId)}
+            nextId={nextId}
             onToggle={onToggle}
             reduced={reduced}
           />

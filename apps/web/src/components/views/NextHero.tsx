@@ -60,11 +60,11 @@ export function NextHero({ item, label = 'Next', onToggle }: NextHeroProps) {
     .join('  ·  ')
 
   return (
-    <div className="flex items-center justify-between gap-4 rounded-2xl border bg-gradient-to-br from-primary/5 to-transparent px-6 py-6">
+    <div className="flex items-center justify-between gap-4 rounded-2xl border bg-gradient-to-br from-primary/5 to-transparent px-5 py-5 sm:px-6 sm:py-6">
       <div className="min-w-0">
         <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{label}</p>
-        <h2 className="mt-1 truncate text-3xl font-bold">{routine.name}</h2>
-        <p className="mt-1 text-sm text-muted-foreground">{meta}</p>
+        <h2 className="mt-1 truncate text-2xl font-bold sm:text-3xl">{routine.name}</h2>
+        <p className="mt-1 text-xs text-muted-foreground sm:text-sm">{meta}</p>
         <button
           type="button"
           onClick={() => {

@@ -94,7 +94,7 @@ export function TimelineCard({
                 onClick={() => onFocus(routine.id)}
                 className="flex w-full items-center gap-3 rounded-lg px-2 py-2 text-left transition-colors hover:bg-muted/40"
               >
-                <span className="w-16 shrink-0 text-xs tabular-nums text-muted-foreground">
+                <span className="w-14 shrink-0 text-xs tabular-nums text-muted-foreground sm:w-16">
                   {whenLabel(item)}
                 </span>
                 <span className="min-w-0">

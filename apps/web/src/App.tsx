@@ -16,8 +16,10 @@ import { LevelCard } from '@/components/gamification/LevelCard'
 import { AchievementsPanel } from '@/components/gamification/AchievementsPanel'
 import { NotificationSettings } from '@/components/notifications/NotificationSettings'
 import { GreetingHeader } from '@/components/GreetingHeader'
+import { HealthMetricsCard } from '@/components/health/HealthMetricsCard'
 import { useRoutines } from '@/hooks/useRoutines'
 import { useCompletions } from '@/hooks/useCompletions'
+import { useHealthData } from '@/hooks/useHealthData'
 import { useStats } from '@/hooks/useStats'
 import { useGamification } from '@/hooks/useGamification'
 import { useIdentities } from '@/hooks/useIdentities'
@@ -26,14 +28,20 @@ import { useReflections } from '@/hooks/useReflections'
 import { useConsistency } from '@/hooks/useConsistency'
 import { getToday } from '@/lib/date-utils'
 import type { ViewType } from '@/types'
-import { Flame, Target, Trophy, X, List, ChevronLeft, CalendarCheck, Sparkles } from 'lucide-react'
+import { Flame, Target, Trophy, X, List, ChevronLeft, CalendarCheck, Sparkles, Plus } from 'lucide-react'
 
 function App() {
   const [view, setView] = useState<ViewType>('now')
   const [selectedDate, setSelectedDate] = useState(getToday())
   const { routines, addRoutine, updateRoutine, deleteRoutine, getRoutinesByCategory } = useRoutines()
-  const { completions, toggleCompletion } = useCompletions()
+  const { completions, toggleCompletion, reload: reloadCompletions } = useCompletions()
+  const health = useHealthData()
   const { todayStats, streak } = useStats(routines, completions)
+
+  const handleHealthSync = async () => {
+    const result = await health.sync()
+    if (result.completed.length > 0) reloadCompletions()
+  }
   const { identities, addIdentity, updateIdentity, deleteIdentity } = useIdentities()
   const { systems, addSystem, updateSystem, deleteSystem } = useSystems()
   const { reflections, getReflectionForDate, setReflection } = useReflections()
@@ -116,7 +124,7 @@ function App() {
 
         <header className="flex items-start justify-between gap-3">
           {isNow ? (
-            <div className="flex items-center gap-3">
+            <div className="flex min-w-0 items-center gap-3">
               <span
                 aria-hidden
                 className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border bg-primary/10 text-2xl"
@@ -131,19 +139,32 @@ function App() {
               <p className="text-sm text-muted-foreground">Track your daily routines</p>
             </div>
           )}
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             <NotificationSettings onEnabledChange={() => {}} />
             <RoutineForm
               onSubmit={addRoutine}
               identities={identities}
               systems={systems}
               categories={usedCategories}
+              trigger={
+                <Button size="sm" className="shrink-0">
+                  <Plus className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Add Routine</span>
+                </Button>
+              }
             />
           </div>
         </header>
 
         {isNow ? (
           <div className="space-y-6">
+            <HealthMetricsCard
+              todayMetrics={health.todayMetrics}
+              available={health.available}
+              syncing={health.syncing}
+              lastResult={health.lastResult}
+              onSync={handleHealthSync}
+            />
             <NowView
               routines={routines}
               completions={completions}

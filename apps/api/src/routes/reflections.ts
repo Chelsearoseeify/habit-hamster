@@ -19,6 +19,11 @@ reflectionsRouter.put('/:date', async (c) => {
   return c.json({ date, mood, note: note ?? undefined })
 })
 
+reflectionsRouter.delete('/', async (c) => {
+  await db.execute('DELETE FROM reflections')
+  return c.body(null, 204)
+})
+
 reflectionsRouter.delete('/:date', async (c) => {
   const { date } = c.req.param()
   await db.execute({ sql: 'DELETE FROM reflections WHERE date = ?', args: [date] })

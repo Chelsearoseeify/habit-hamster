@@ -8,6 +8,7 @@ import { pushRouter } from './routes/push.js'
 import { identitiesRouter } from './routes/identities.js'
 import { systemsRouter } from './routes/systems.js'
 import { reflectionsRouter } from './routes/reflections.js'
+import { healthRouter } from './routes/health.js'
 import { cronRouter } from './cron/notify.js'
 
 export const config = { runtime: 'nodejs' }
@@ -30,6 +31,7 @@ app.route('/push', pushRouter)
 app.route('/identities', identitiesRouter)
 app.route('/systems', systemsRouter)
 app.route('/reflections', reflectionsRouter)
+app.route('/health-data', healthRouter)
 app.route('/cron', cronRouter)
 
 app.get('/health', (c) => c.json({ ok: true }))

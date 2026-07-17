@@ -26,6 +26,12 @@ gamificationRouter.put('/', async (c) => {
   return c.json(body)
 })
 
+gamificationRouter.delete('/', async (c) => {
+  await db.execute("DELETE FROM gamification WHERE id = 'current'")
+  await db.execute('DELETE FROM perfect_day_bonuses')
+  return c.body(null, 204)
+})
+
 gamificationRouter.get('/perfect-day/:date', async (c) => {
   const { date } = c.req.param()
   const result = await db.execute({

@@ -31,7 +31,8 @@ CREATE TABLE IF NOT EXISTS routines (
   created_at   TEXT NOT NULL,
   paused       INTEGER NOT NULL DEFAULT 0,
   identity_id  TEXT REFERENCES identities(id) ON DELETE SET NULL,
-  system_id    TEXT REFERENCES systems(id) ON DELETE SET NULL
+  system_id    TEXT REFERENCES systems(id) ON DELETE SET NULL,
+  health_trigger TEXT
 );
 
 -- Migrations for existing databases. Run ONCE by hand; ADD COLUMN is not
@@ -39,6 +40,21 @@ CREATE TABLE IF NOT EXISTS routines (
 --   ALTER TABLE routines ADD COLUMN identity_id TEXT REFERENCES identities(id) ON DELETE SET NULL;
 --   ALTER TABLE routines ADD COLUMN system_id TEXT REFERENCES systems(id) ON DELETE SET NULL;
 -- (create the systems table first, above.)
+
+-- Aggregated health metrics synced from Health Connect (one row per day+metric).
+-- metric ∈ 'steps' | 'distance_m' | 'exercise_min' | 'sleep_min'.
+CREATE TABLE IF NOT EXISTS health_data (
+  date       TEXT NOT NULL,
+  metric     TEXT NOT NULL,
+  value      REAL NOT NULL,
+  source     TEXT NOT NULL DEFAULT 'health_connect',
+  synced_at  TEXT NOT NULL,
+  PRIMARY KEY (date, metric)
+);
+
+-- health_trigger: JSON { metric, threshold } — auto-completes the routine when
+-- the day's synced metric reaches threshold. Migration for existing databases:
+--   ALTER TABLE routines ADD COLUMN health_trigger TEXT;
 
 CREATE TABLE IF NOT EXISTS reflections (
   date  TEXT PRIMARY KEY,

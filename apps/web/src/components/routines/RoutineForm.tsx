@@ -18,12 +18,21 @@ import {
 } from '@/components/ui/select'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Checkbox } from '@/components/ui/checkbox'
-import type { Routine, FrequencyType, Identity, System } from '@/types'
+import type { Routine, FrequencyType, Identity, System, HealthMetric } from '@/types'
 import { CATEGORIES } from '@/types'
 import { Plus } from 'lucide-react'
 
 const NO_IDENTITY = 'none'
 const NO_SYSTEM = 'none'
+const NO_TRIGGER = 'none'
+
+/** Auto-complete metric options: label + unit + a sensible default threshold. */
+const HEALTH_METRICS: { value: HealthMetric; label: string; unit: string; default: number }[] = [
+  { value: 'steps', label: 'Steps', unit: 'steps', default: 8000 },
+  { value: 'distance_m', label: 'Distance', unit: 'meters', default: 3000 },
+  { value: 'exercise_min', label: 'Exercise', unit: 'minutes', default: 30 },
+  { value: 'sleep_min', label: 'Sleep', unit: 'minutes', default: 420 },
+]
 
 interface RoutineFormProps {
   onSubmit: (routine: Omit<Routine, 'id' | 'createdAt'>) => void
@@ -74,6 +83,12 @@ export function RoutineForm({ onSubmit, initialData, trigger, identities = [], s
   const [timeStart, setTimeStart] = useState(initialData?.timeRange?.start ?? '')
   const [timeEnd, setTimeEnd] = useState(initialData?.timeRange?.end ?? '')
   const [description, setDescription] = useState(initialData?.description ?? '')
+  const [healthMetric, setHealthMetric] = useState<HealthMetric | typeof NO_TRIGGER>(
+    initialData?.healthTrigger?.metric ?? NO_TRIGGER
+  )
+  const [healthThreshold, setHealthThreshold] = useState<number>(
+    initialData?.healthTrigger?.threshold ?? HEALTH_METRICS[0].default
+  )
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -98,7 +113,9 @@ export function RoutineForm({ onSubmit, initialData, trigger, identities = [], s
     const timeRange = timeStart
       ? { start: timeStart, ...(timeEnd ? { end: timeEnd } : {}) }
       : undefined
-    onSubmit({ name: name.trim(), category: category.trim(), frequency, timeRange, preferredDays: preferredDays.length > 0 ? preferredDays : undefined, description: description.trim() || undefined, identityId: identityId === NO_IDENTITY ? null : identityId, systemId: systemId === NO_SYSTEM ? null : systemId })
+    const healthTrigger =
+      healthMetric === NO_TRIGGER ? null : { metric: healthMetric, threshold: healthThreshold }
+    onSubmit({ name: name.trim(), category: category.trim(), frequency, timeRange, preferredDays: preferredDays.length > 0 ? preferredDays : undefined, description: description.trim() || undefined, identityId: identityId === NO_IDENTITY ? null : identityId, systemId: systemId === NO_SYSTEM ? null : systemId, healthTrigger })
     setOpen(false)
     resetForm()
   }
@@ -118,6 +135,8 @@ export function RoutineForm({ onSubmit, initialData, trigger, identities = [], s
       setTimeStart('')
       setTimeEnd('')
       setDescription('')
+      setHealthMetric(NO_TRIGGER)
+      setHealthThreshold(HEALTH_METRICS[0].default)
     }
   }
 
@@ -353,6 +372,45 @@ export function RoutineForm({ onSubmit, initialData, trigger, identities = [], s
                 className="w-full"
               />
             </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="health-trigger">Auto-complete from Samsung Health (optional)</Label>
+            <Select
+              value={healthMetric}
+              onValueChange={(v) => {
+                setHealthMetric(v as HealthMetric | typeof NO_TRIGGER)
+                const m = HEALTH_METRICS.find((h) => h.value === v)
+                if (m) setHealthThreshold(m.default)
+              }}
+            >
+              <SelectTrigger id="health-trigger">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={NO_TRIGGER}>Off — mark done manually</SelectItem>
+                {HEALTH_METRICS.map((m) => (
+                  <SelectItem key={m.value} value={m.value}>
+                    {m.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {healthMetric !== NO_TRIGGER && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground whitespace-nowrap">Complete at</span>
+                <Input
+                  type="number"
+                  min={1}
+                  value={healthThreshold}
+                  onChange={(e) => setHealthThreshold(Number(e.target.value))}
+                  className="w-28"
+                />
+                <span className="text-sm text-muted-foreground">
+                  {HEALTH_METRICS.find((m) => m.value === healthMetric)?.unit} / day
+                </span>
+              </div>
+            )}
           </div>
 
           <Button type="submit" className="w-full">

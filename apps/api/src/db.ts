@@ -1,7 +1,7 @@
 // Use the web (pure-JS hrana) client: no native binary, bundles cleanly into the
 // serverless function and works with remote Turso over the network. Fine in Node 22.
 import { createClient } from '@libsql/client/web'
-import type { Routine, Completion, GamificationState, Identity, System, SystemRulePeriod, SystemRuleType, Reflection, Mood } from '@habit-hamster/types'
+import type { Routine, Completion, GamificationState, Identity, System, SystemRulePeriod, SystemRuleType, Reflection, Mood, HealthDataPoint, HealthMetric } from '@habit-hamster/types'
 
 export const db = createClient({
   url: process.env.TURSO_DATABASE_URL!,
@@ -21,6 +21,15 @@ export function rowToRoutine(row: Record<string, unknown>): Routine {
     paused: (row.paused as number) === 1,
     identityId: (row.identity_id as string) ?? undefined,
     systemId: (row.system_id as string) ?? undefined,
+    healthTrigger: row.health_trigger ? JSON.parse(row.health_trigger as string) : undefined,
+  }
+}
+
+export function rowToHealthData(row: Record<string, unknown>): HealthDataPoint {
+  return {
+    date: row.date as string,
+    metric: row.metric as HealthMetric,
+    value: row.value as number,
   }
 }
 

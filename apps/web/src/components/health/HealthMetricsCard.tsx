@@ -1,9 +1,21 @@
+import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import type { HealthMetric } from '@/types'
 import type { TodayMetrics } from '@/hooks/useHealthData'
 import type { SyncOutcome } from '@/lib/health-sync'
-import { Footprints, Dumbbell, Moon, MapPin, RefreshCw, HeartPulse } from 'lucide-react'
+import {
+  Footprints,
+  Dumbbell,
+  Moon,
+  MapPin,
+  RefreshCw,
+  HeartPulse,
+  Copy,
+  Check,
+  Droplet,
+  Utensils,
+} from 'lucide-react'
 
 interface HealthMetricsCardProps {
   todayMetrics: TodayMetrics
@@ -25,9 +37,22 @@ const METRIC_META: Record<
     icon: Moon,
     format: (v) => `${Math.floor(v / 60)}h ${Math.round(v % 60)}m`,
   },
+  water_ml: {
+    label: 'Water',
+    icon: Droplet,
+    format: (v) => (v >= 1000 ? `${(v / 1000).toFixed(1)} L` : `${Math.round(v)} ml`),
+  },
+  nutrition_kcal: { label: 'Nutrition', icon: Utensils, format: (v) => `${Math.round(v)} kcal` },
 }
 
-const ORDER: HealthMetric[] = ['steps', 'distance_m', 'exercise_min', 'sleep_min']
+const ORDER: HealthMetric[] = [
+  'steps',
+  'distance_m',
+  'exercise_min',
+  'sleep_min',
+  'water_ml',
+  'nutrition_kcal',
+]
 
 export function HealthMetricsCard({
   todayMetrics,
@@ -36,7 +61,23 @@ export function HealthMetricsCard({
   lastResult,
   onSync,
 }: HealthMetricsCardProps) {
+  const [sent, setSent] = useState(false)
   const hasData = ORDER.some((m) => todayMetrics[m] !== undefined)
+
+  const sendLog = async () => {
+    if (!lastResult) return
+    try {
+      await fetch('/api/debug/log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ log: lastResult.log }),
+      })
+      setSent(true)
+      setTimeout(() => setSent(false), 1500)
+    } catch {
+      /* dev server not reachable — ignore */
+    }
+  }
 
   // Nothing to show and can't sync (plain web build) → render nothing.
   if (!available && !hasData) return null
@@ -82,6 +123,28 @@ export function HealthMetricsCard({
             ✓ Auto-completed {lastResult.completed.length}{' '}
             {lastResult.completed.length === 1 ? 'habit' : 'habits'} from your activity.
           </p>
+        )}
+        {lastResult && lastResult.log.length > 0 && (
+          <details className="mt-3">
+            <summary className="flex cursor-pointer items-center justify-between text-xs text-muted-foreground">
+              <span>Sync log ({lastResult.log.length})</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 px-2 text-xs"
+                onClick={(e) => {
+                  e.preventDefault()
+                  sendLog()
+                }}
+              >
+                {sent ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+                <span className="ml-1">{sent ? 'Sent' : 'Send to dev'}</span>
+              </Button>
+            </summary>
+            <pre className="mt-2 max-h-64 overflow-auto rounded bg-muted p-2 text-[10px] leading-relaxed whitespace-pre-wrap break-all">
+              {lastResult.log.join('\n')}
+            </pre>
+          </details>
         )}
       </CardContent>
     </Card>

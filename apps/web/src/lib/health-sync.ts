@@ -10,7 +10,7 @@ import { HealthConnect } from '@devmaxime/capacitor-health-connect'
 import type { RecordType } from '@devmaxime/capacitor-health-connect'
 import type { HealthDataPoint, HealthMetric } from '@/types'
 import { syncHealthData, type HealthSyncResult } from './api'
-import { formatDate, addDays } from './date-utils'
+import { formatDate } from './date-utils'
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -19,14 +19,18 @@ export async function isHealthSyncAvailable(): Promise<boolean> {
   if (!Capacitor.isNativePlatform()) return false
   try {
     const { availability } = await HealthConnect.checkAvailability()
+    console.log('[health] checkAvailability ->', availability)
     return availability === 'Available'
-  } catch {
+  } catch (e) {
+    console.log('[health] checkAvailability FAILED', String(e))
     return false
   }
 }
 
 export interface SyncOutcome extends HealthSyncResult {
   available: boolean
+  /** Raw step-by-step trace of what Health Connect returned, for on-device debugging. */
+  log: string[]
 }
 
 function durationMinutes(record: any): number {
@@ -42,18 +46,40 @@ function durationMinutes(record: any): number {
  * No-op returning { available: false } when not running on the native wrapper.
  */
 export async function runHealthSync(days = 7): Promise<SyncOutcome> {
-  if (!Capacitor.isNativePlatform()) return { available: false, synced: 0, completed: [] }
+  const log: string[] = []
+  const trace = (...parts: unknown[]) => {
+    const line = parts.map((p) => (typeof p === 'string' ? p : JSON.stringify(p))).join(' ')
+    console.log('[health]', line)
+    log.push(line)
+  }
+
+  if (!Capacitor.isNativePlatform()) return { available: false, synced: 0, completed: [], log }
 
   // 'Distance' isn't in the plugin's read RecordType union but the native layer
   // maps it; cast and let a runtime failure fall through to the per-metric catch.
-  await HealthConnect.requestPermissions({
-    read: ['Steps', 'Distance' as RecordType, 'ActivitySession', 'SleepSession'],
+  const perms = await HealthConnect.requestPermissions({
+    read: [
+      'Steps',
+      'Distance' as RecordType,
+      'ActivitySession',
+      'SleepSession',
+      'Hydration' as RecordType,
+      'Nutrition' as RecordType,
+    ],
     write: [],
   })
+  trace('requestPermissions ->', perms)
 
+  // Start the window at LOCAL midnight `days` ago. aggregateRecords({groupBy:'day'})
+  // cuts buckets relative to the window start, so a non-midnight start files
+  // today's steps under yesterday's date. Midnight-align → calendar-day buckets.
   const end = new Date()
-  const startISO = addDays(end, -days).toISOString()
+  const start = new Date()
+  start.setHours(0, 0, 0, 0)
+  start.setDate(start.getDate() - days)
+  const startISO = start.toISOString()
   const endISO = end.toISOString()
+  trace('window', startISO, '->', endISO)
 
   // date -> metric -> summed value
   const acc = new Map<string, Partial<Record<HealthMetric, number>>>()
@@ -72,8 +98,10 @@ export async function runHealthSync(days = 7): Promise<SyncOutcome> {
         type,
         groupBy: 'day',
       })
+      trace(`aggregate ${type} ->`, aggregates)
       for (const a of aggregates ?? []) bump(formatDate(new Date(a.startTime)), metric, a.value)
-    } catch {
+    } catch (e) {
+      trace(`aggregate ${type} FAILED`, String(e))
       /* metric unavailable / permission denied — skip */
     }
   }
@@ -84,16 +112,39 @@ export async function runHealthSync(days = 7): Promise<SyncOutcome> {
   const sessions = async (type: 'ActivitySession' | 'SleepSession', metric: HealthMetric) => {
     try {
       const { records } = await HealthConnect.readRecords({ start: startISO, end: endISO, type })
+      trace(`readRecords ${type} -> ${(records as any[])?.length ?? 0} records`, records)
       for (const r of (records as any[]) ?? []) {
         const mins = durationMinutes(r)
         if (mins > 0) bump(formatDate(new Date(r.startTime)), metric, mins)
       }
-    } catch {
+    } catch (e) {
+      trace(`readRecords ${type} FAILED`, String(e))
       /* skip */
     }
   }
   await sessions('ActivitySession', 'exercise_min')
   await sessions('SleepSession', 'sleep_min')
+
+  // Hydration (mL) + Nutrition (kcal): instantaneous/interval records, each with
+  // a `value` field surfaced by our native converter patch. Sum per day.
+  const totals = async (type: 'Hydration' | 'Nutrition', metric: HealthMetric) => {
+    try {
+      const { records } = await HealthConnect.readRecords({
+        start: startISO,
+        end: endISO,
+        type: type as RecordType,
+      })
+      trace(`readRecords ${type} -> ${(records as any[])?.length ?? 0} records`, records)
+      for (const r of (records as any[]) ?? []) {
+        const value = Number(r?.value)
+        if (Number.isFinite(value) && value > 0) bump(formatDate(new Date(r.startTime)), metric, value)
+      }
+    } catch (e) {
+      trace(`readRecords ${type} FAILED`, String(e))
+    }
+  }
+  await totals('Hydration', 'water_ml')
+  await totals('Nutrition', 'nutrition_kcal')
 
   const points: HealthDataPoint[] = []
   for (const [date, metrics] of acc) {
@@ -102,7 +153,9 @@ export async function runHealthSync(days = 7): Promise<SyncOutcome> {
     }
   }
 
-  if (points.length === 0) return { available: true, synced: 0, completed: [] }
+  trace('aggregated points ->', points)
+  if (points.length === 0) return { available: true, synced: 0, completed: [], log }
   const result = await syncHealthData(points)
-  return { available: true, ...result }
+  trace('syncHealthData result ->', result)
+  return { available: true, ...result, log }
 }

@@ -5,7 +5,13 @@ export type FrequencyType =
   | { type: 'interval'; days: number }
 
 /** Health Connect / Samsung Health metrics we sync and aggregate per day. */
-export type HealthMetric = 'steps' | 'distance_m' | 'exercise_min' | 'sleep_min'
+export type HealthMetric =
+  | 'steps'
+  | 'distance_m'
+  | 'exercise_min'
+  | 'sleep_min'
+  | 'water_ml'
+  | 'nutrition_kcal'
 
 /**
  * Links a routine to a health metric so it auto-completes when the day's synced

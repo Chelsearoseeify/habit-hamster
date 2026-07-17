@@ -1,4 +1,4 @@
-import type { Routine, Completion, GamificationState, PushSubscriptionPayload, Identity, System, Reflection, Mood } from '@/types'
+import type { Routine, Completion, GamificationState, PushSubscriptionPayload, Identity, System, Reflection, Mood, HealthDataPoint } from '@/types'
 
 const API_BASE = import.meta.env.VITE_API_URL ?? '/api'
 
@@ -45,6 +45,23 @@ export function upsertCompletion(routineId: string, date: string, count: number)
 
 export function removeCompletion(routineId: string, date: string): Promise<void> {
   return request<void>(`/completions/${routineId}/${date}`, { method: 'DELETE' })
+}
+
+// --- Bulk reset ---
+
+/** Delete all history: completions, reflections, and gamification progress. */
+export async function clearHistory(): Promise<void> {
+  await Promise.all([
+    request<void>('/completions', { method: 'DELETE' }),
+    request<void>('/reflections', { method: 'DELETE' }),
+    request<void>('/gamification', { method: 'DELETE' }),
+  ])
+}
+
+/** Delete everything: history plus all routines. */
+export async function clearAll(): Promise<void> {
+  await clearHistory()
+  await request<void>('/routines', { method: 'DELETE' })
 }
 
 // --- Gamification ---
@@ -116,6 +133,29 @@ export function upsertReflection(date: string, mood: Mood, note?: string): Promi
 
 export function removeReflection(date: string): Promise<void> {
   return request<void>(`/reflections/${date}`, { method: 'DELETE' })
+}
+
+// --- Health data (Health Connect / Samsung Health) ---
+
+export interface HealthSyncResult {
+  synced: number
+  completed: { routineId: string; date: string; count: number }[]
+}
+
+export function getHealthData(from?: string, to?: string): Promise<HealthDataPoint[]> {
+  const qs = new URLSearchParams()
+  if (from) qs.set('from', from)
+  if (to) qs.set('to', to)
+  const suffix = qs.toString() ? `?${qs}` : ''
+  return request<HealthDataPoint[]>(`/health-data${suffix}`)
+}
+
+/** Push aggregated daily metrics; server upserts and auto-completes triggered routines. */
+export function syncHealthData(points: HealthDataPoint[]): Promise<HealthSyncResult> {
+  return request<HealthSyncResult>('/health-data', {
+    method: 'POST',
+    body: JSON.stringify(points),
+  })
 }
 
 // --- Push ---

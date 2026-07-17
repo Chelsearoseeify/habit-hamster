@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Bell, BellOff, Settings } from 'lucide-react'
+import { Bell, BellOff, Settings, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   areNotificationsEnabled,
@@ -7,6 +7,7 @@ import {
   setNotificationsEnabled,
   subscribeToWebPush,
 } from '@/lib/notifications'
+import { clearHistory, clearAll } from '@/lib/api'
 
 interface NotificationSettingsProps {
   onEnabledChange: (enabled: boolean) => void
@@ -18,6 +19,24 @@ export function NotificationSettings({ onEnabledChange }: NotificationSettingsPr
   const [permissionState, setPermissionState] = useState<NotificationPermission>(
     'Notification' in window ? Notification.permission : 'denied'
   )
+  const [busy, setBusy] = useState(false)
+
+  const runReset = async (label: string, fn: () => Promise<void>) => {
+    if (
+      !window.confirm(
+        `${label}\n\nThis permanently erases data and cannot be undone. Continue?`
+      )
+    )
+      return
+    setBusy(true)
+    try {
+      await fn()
+      window.location.reload()
+    } catch {
+      setBusy(false)
+      window.alert('Something went wrong. Nothing may have been deleted — try again.')
+    }
+  }
 
   const handleToggle = async () => {
     if (!enabled) {
@@ -76,6 +95,42 @@ export function NotificationSettings({ onEnabledChange }: NotificationSettingsPr
               </Button>
             </>
           )}
+
+          <div className="space-y-2 border-t pt-3">
+            <p className="text-sm font-semibold">Reset data</p>
+            <p className="text-[11px] text-muted-foreground">
+              History = completions, reflections and progress. "Everything" also removes all
+              routines.
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={busy}
+              className="w-full gap-2 text-destructive hover:text-destructive"
+              onClick={() =>
+                runReset(
+                  'Delete all history? Completions, reflections and progress will be erased. Your routines are kept.',
+                  clearHistory
+                )
+              }
+            >
+              <Trash2 className="h-3.5 w-3.5" /> Delete history
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={busy}
+              className="w-full gap-2 text-destructive hover:text-destructive"
+              onClick={() =>
+                runReset(
+                  'Delete everything? All routines AND history will be erased.',
+                  clearAll
+                )
+              }
+            >
+              <Trash2 className="h-3.5 w-3.5" /> Delete everything
+            </Button>
+          </div>
 
           <Button
             variant="ghost"

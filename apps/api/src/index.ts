@@ -8,6 +8,7 @@ import { pushRouter } from './routes/push.js'
 import { identitiesRouter } from './routes/identities.js'
 import { systemsRouter } from './routes/systems.js'
 import { reflectionsRouter } from './routes/reflections.js'
+import { healthRouter } from './routes/health.js'
 import { cronRouter } from './cron/notify.js'
 
 export const config = { runtime: 'nodejs' }
@@ -30,9 +31,20 @@ app.route('/push', pushRouter)
 app.route('/identities', identitiesRouter)
 app.route('/systems', systemsRouter)
 app.route('/reflections', reflectionsRouter)
+app.route('/health-data', healthRouter)
 app.route('/cron', cronRouter)
 
 app.get('/health', (c) => c.json({ ok: true }))
+
+// Dev-only sink: phone POSTs its sync log here so it prints to the API terminal
+// (clipboard can't travel from the device to the dev machine any other way).
+app.post('/debug/log', async (c) => {
+  const body = await c.req.json().catch(() => ({}))
+  console.log('\n===== DEVICE LOG =====')
+  for (const line of body.log ?? []) console.log(line)
+  console.log('===== END DEVICE LOG =====\n')
+  return c.json({ ok: true })
+})
 
 export default handle(app)
 export const GET = handle(app)

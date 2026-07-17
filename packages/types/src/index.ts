@@ -4,6 +4,32 @@ export type FrequencyType =
   | { type: 'weekdays'; days: number[] }
   | { type: 'interval'; days: number }
 
+/** Health Connect / Samsung Health metrics we sync and aggregate per day. */
+export type HealthMetric =
+  | 'steps'
+  | 'distance_m'
+  | 'exercise_min'
+  | 'sleep_min'
+  | 'water_ml'
+  | 'nutrition_kcal'
+
+/**
+ * Links a routine to a health metric so it auto-completes when the day's synced
+ * value reaches the threshold. E.g. { metric: 'steps', threshold: 8000 } marks a
+ * "Walk" routine done once Health Connect reports 8000 steps for that date.
+ */
+export interface HealthTrigger {
+  metric: HealthMetric
+  threshold: number
+}
+
+/** One aggregated metric value for one day, synced from Health Connect. */
+export interface HealthDataPoint {
+  date: string
+  metric: HealthMetric
+  value: number
+}
+
 export interface Routine {
   id: string
   name: string
@@ -16,6 +42,7 @@ export interface Routine {
   paused?: boolean
   identityId?: string | null
   systemId?: string | null
+  healthTrigger?: HealthTrigger | null
 }
 
 export interface Completion {

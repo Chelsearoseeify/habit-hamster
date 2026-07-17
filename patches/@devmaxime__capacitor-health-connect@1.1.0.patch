@@ -1,0 +1,43 @@
+diff --git a/android/src/main/java/com/devmaxime/capacitor/health/connect/RecordConverter.kt b/android/src/main/java/com/devmaxime/capacitor/health/connect/RecordConverter.kt
+index 2953566eabb2d3ec1dddfbbffa2d8a3954b4b4b5..f59a03a74dd4ce27edd793955c7ddc851601f083 100644
+--- a/android/src/main/java/com/devmaxime/capacitor/health/connect/RecordConverter.kt
++++ b/android/src/main/java/com/devmaxime/capacitor/health/connect/RecordConverter.kt
+@@ -8,6 +8,8 @@ import androidx.health.connect.client.records.ExerciseSessionRecord
+ import androidx.health.connect.client.records.StepsRecord
+ import androidx.health.connect.client.records.SleepSessionRecord
+ import androidx.health.connect.client.records.RestingHeartRateRecord
++import androidx.health.connect.client.records.HydrationRecord
++import androidx.health.connect.client.records.NutritionRecord
+ import androidx.health.connect.client.records.ExerciseSegment
+ import androidx.health.connect.client.records.ExerciseLap
+ import androidx.health.connect.client.records.ExerciseRoute
+@@ -96,6 +98,29 @@ fun convertRecordToJson(record: Record): Any {
+             obj.put("metadata", convertMetadataToJson(record.metadata))
+             obj
+         }
++        is HydrationRecord -> {
++            val obj = JSObject()
++            obj.put("startTime", record.startTime.toString())
++            obj.put("startZoneOffset", record.startZoneOffset?.toString() ?: "")
++            obj.put("endTime", record.endTime.toString())
++            obj.put("endZoneOffset", record.endZoneOffset?.toString() ?: "")
++            obj.put("value", record.volume.inMilliliters)
++            obj.put("unit", "mL")
++            obj.put("metadata", convertMetadataToJson(record.metadata))
++            obj
++        }
++        is NutritionRecord -> {
++            val obj = JSObject()
++            obj.put("startTime", record.startTime.toString())
++            obj.put("startZoneOffset", record.startZoneOffset?.toString() ?: "")
++            obj.put("endTime", record.endTime.toString())
++            obj.put("endZoneOffset", record.endZoneOffset?.toString() ?: "")
++            obj.put("value", record.energy?.inKilocalories ?: 0.0)
++            obj.put("unit", "kcal")
++            obj.put("name", record.name ?: "")
++            obj.put("metadata", convertMetadataToJson(record.metadata))
++            obj
++        }
+         // Add additional custom conversions for other record types here if needed.
+         else -> record.toString()
+     }

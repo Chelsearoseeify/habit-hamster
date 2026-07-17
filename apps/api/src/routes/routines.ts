@@ -14,8 +14,8 @@ routinesRouter.post('/', async (c) => {
   const id = crypto.randomUUID()
   const createdAt = new Date().toISOString()
   await db.execute({
-    sql: `INSERT INTO routines (id, name, category, frequency, time_range, preferred_days, description, created_at, paused, identity_id, system_id)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    sql: `INSERT INTO routines (id, name, category, frequency, time_range, preferred_days, description, created_at, paused, identity_id, system_id, health_trigger)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     args: [
       id,
       body.name,
@@ -28,6 +28,7 @@ routinesRouter.post('/', async (c) => {
       0,
       body.identityId ?? null,
       body.systemId ?? null,
+      body.healthTrigger ? JSON.stringify(body.healthTrigger) : null,
     ],
   })
   const result = await db.execute({ sql: 'SELECT * FROM routines WHERE id = ?', args: [id] })
@@ -50,6 +51,7 @@ routinesRouter.patch('/:id', async (c) => {
   if (body.paused !== undefined) { fields.push('paused = ?'); args.push(body.paused ? 1 : 0) }
   if ('identityId' in body) { fields.push('identity_id = ?'); args.push(body.identityId ?? null) }
   if ('systemId' in body) { fields.push('system_id = ?'); args.push(body.systemId ?? null) }
+  if ('healthTrigger' in body) { fields.push('health_trigger = ?'); args.push(body.healthTrigger ? JSON.stringify(body.healthTrigger) : null) }
 
   if (fields.length === 0) return c.json({ error: 'No fields to update' }, 400)
 
@@ -58,6 +60,11 @@ routinesRouter.patch('/:id', async (c) => {
   const result = await db.execute({ sql: 'SELECT * FROM routines WHERE id = ?', args: [id] })
   if (result.rows.length === 0) return c.json({ error: 'Not found' }, 404)
   return c.json(rowToRoutine(result.rows[0] as Record<string, unknown>))
+})
+
+routinesRouter.delete('/', async (c) => {
+  await db.execute('DELETE FROM routines')
+  return c.body(null, 204)
 })
 
 routinesRouter.delete('/:id', async (c) => {

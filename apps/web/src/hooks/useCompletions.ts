@@ -7,6 +7,8 @@ import { parseDate, getDayOfWeek, addDays } from '@/lib/date-utils'
 export function useCompletions() {
   const [completions, setCompletions] = useState<Completion[]>([])
 
+  const reload = useCallback(() => getCompletions().then(setCompletions), [])
+
   useEffect(() => {
     getCompletions().then(setCompletions)
   }, [])
@@ -80,6 +82,7 @@ export function useCompletions() {
     toggleCompletion,
     setCompletionCount,
     getCompletionsForDate,
+    reload,
   }
 }
 

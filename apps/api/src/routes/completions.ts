@@ -19,6 +19,11 @@ completionsRouter.put('/:routineId/:date', async (c) => {
   return c.json({ routineId, date, count })
 })
 
+completionsRouter.delete('/', async (c) => {
+  await db.execute('DELETE FROM completions')
+  return c.body(null, 204)
+})
+
 completionsRouter.delete('/:routineId/:date', async (c) => {
   const { routineId, date } = c.req.param()
   await db.execute({

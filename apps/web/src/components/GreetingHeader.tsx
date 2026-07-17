@@ -8,23 +8,40 @@ const EMOJI: Record<string, string> = {
   'Good evening': '🌙',
 }
 
+/** Live "Thursday, July 16 · 6:24 PM" — the current day and hour. */
+function formatNow(d: Date): string {
+  const day = d.toLocaleDateString(undefined, {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+  })
+  const time = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+  return `${day} · ${time}`
+}
+
 /**
  * The homepage opener: a time-of-day greeting, the user's name (click to edit),
- * and their identity "why" as a quiet subtitle. Identity is the reason, not the
- * scene — so it sits small under the greeting.
+ * and the current day and hour as a quiet subtitle.
  */
-export function GreetingHeader({ why }: { why: string }) {
+export function GreetingHeader() {
   const { name, setName } = useUserName()
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState(name)
+  const [now, setNow] = useState(() => new Date())
   const inputRef = useRef<HTMLInputElement>(null)
 
-  const greeting = greetingFor(new Date())
+  const greeting = greetingFor(now)
   const emoji = EMOJI[greeting]
 
   useEffect(() => {
     if (editing) inputRef.current?.focus()
   }, [editing])
+
+  // Tick the clock every 30s so the hour stays current.
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 30_000)
+    return () => clearInterval(t)
+  }, [])
 
   const startEdit = () => {
     setDraft(name)
@@ -79,7 +96,7 @@ export function GreetingHeader({ why }: { why: string }) {
           {emoji}
         </h1>
       )}
-      <p className="mt-0.5 text-sm text-muted-foreground">{why}</p>
+      <p className="mt-0.5 text-sm text-muted-foreground tabular-nums">{formatNow(now)}</p>
     </div>
   )
 }

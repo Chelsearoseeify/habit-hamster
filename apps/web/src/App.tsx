@@ -67,15 +67,6 @@ function App() {
   const usedCategories = [...new Set(routines.map((r) => r.category).filter(Boolean))]
   const isNow = view === 'now'
 
-  // Identity as the greeting's "why" — prefer one with a statement, else any
-  // identity that has routines; fall back to a gentle default.
-  const linkedIdentity =
-    identities.find((i) => i.statement?.trim() && routines.some((r) => r.identityId === i.id)) ??
-    identities.find((i) => routines.some((r) => r.identityId === i.id))
-  const identityWhy =
-    linkedIdentity?.statement?.trim() ||
-    (linkedIdentity ? `Someone becoming ${linkedIdentity.name}` : 'Today matters.')
-
   // Auto-dismiss celebrations after 4 seconds
   useEffect(() => {
     if (newAchievement) {
@@ -93,7 +84,7 @@ function App() {
 
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
-      <div className="max-w-4xl mx-auto space-y-6">
+      <div className={`mx-auto space-y-6 ${isNow ? 'max-w-6xl' : 'max-w-4xl'}`}>
 
         {/* Level-up banner */}
         {levelUp && (
@@ -125,16 +116,29 @@ function App() {
 
         <header className="flex items-start justify-between gap-3">
           {isNow ? (
-            <GreetingHeader why={identityWhy} />
+            <div className="flex items-center gap-3">
+              <span
+                aria-hidden
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border bg-primary/10 text-2xl"
+              >
+                🐹
+              </span>
+              <GreetingHeader />
+            </div>
           ) : (
             <div>
               <h1 className="text-2xl font-bold">Habit Hamster</h1>
               <p className="text-sm text-muted-foreground">Track your daily routines</p>
             </div>
           )}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
             <NotificationSettings onEnabledChange={() => {}} />
-            <RoutineForm onSubmit={addRoutine} identities={identities} systems={systems} categories={usedCategories} />
+            <RoutineForm
+              onSubmit={addRoutine}
+              identities={identities}
+              systems={systems}
+              categories={usedCategories}
+            />
           </div>
         </header>
 
@@ -148,6 +152,7 @@ function App() {
               todayStats={todayStats}
               consistency={consistency}
               onToggle={handleToggle}
+              onViewFullDay={() => setView('day')}
               getReflectionForDate={getReflectionForDate}
               setReflection={setReflection}
             />

@@ -1,167 +1,197 @@
-import { useMemo } from 'react'
-import type { Routine, Completion, Identity, System, Reflection, Mood } from '@/types'
-import { Card, CardContent } from '@/components/ui/card'
-import { MoodSelector } from '@/components/reflection/MoodSelector'
-import { TodayTimeline } from '@/components/views/TodayTimeline'
-import { getMaxCountForRoutine, isRoutineDueOnDate } from '@/hooks/useCompletions'
-import { identityTodayProgress } from '@/lib/identity-utils'
-import { blockForRoutine, BLOCK_ORDER } from '@/lib/blocks'
-import { getToday } from '@/lib/date-utils'
-import { useReducedMotion } from '@/hooks/useReducedMotion'
+import { useMemo, useState } from "react";
+import { flushSync } from "react-dom";
+import type {
+  Routine,
+  Completion,
+  Identity,
+  System,
+  Reflection,
+  Mood,
+} from "@/types";
+import { MoodSelector } from "@/components/reflection/MoodSelector";
+import { TimelineCard } from "@/components/views/TimelineCard";
+import { AnytimeCard } from "@/components/views/AnytimeCard";
+import { partitionByTime } from "@/lib/honeycomb";
+import {
+  getMaxCountForRoutine,
+  isRoutineDueOnDate,
+} from "@/hooks/useCompletions";
+import { blockForRoutine, BLOCK_ORDER } from "@/lib/blocks";
+import { getToday } from "@/lib/date-utils";
 
 interface NowViewProps {
-  routines: Routine[]
-  completions: Completion[]
-  identities: Identity[]
+  routines: Routine[];
+  completions: Completion[];
+  identities: Identity[];
   // Kept for prop compatibility with App; systems live in "More & stats" now.
-  systems: System[]
-  todayStats: { total: number; completed: number; percentage: number }
-  consistency: { activeDays: number; daysElapsed: number; monthlyConsistency: number }
-  onToggle: (routineId: string, maxCount: number) => void
-  getReflectionForDate: (date: string) => Reflection | undefined
-  setReflection: (date: string, mood: Mood, note?: string) => void
+  systems: System[];
+  todayStats: { total: number; completed: number; percentage: number };
+  consistency: {
+    activeDays: number;
+    daysElapsed: number;
+    monthlyConsistency: number;
+  };
+  onToggle: (routineId: string, maxCount: number) => void;
+  onViewFullDay: () => void;
+  getReflectionForDate: (date: string) => Reflection | undefined;
+  setReflection: (date: string, mood: Mood, note?: string) => void;
 }
 
 const BLOCK_WEIGHT: Record<string, number> = Object.fromEntries(
-  BLOCK_ORDER.map((b, i) => [b, i])
-)
+  BLOCK_ORDER.map((b, i) => [b, i]),
+);
 
 export function NowView({
   routines,
   completions,
   identities,
-  todayStats,
   onToggle,
+  onViewFullDay,
   getReflectionForDate,
   setReflection,
 }: NowViewProps) {
-  const today = getToday()
-  const reduced = useReducedMotion()
-  const enter = reduced ? '' : 'animate-now-enter'
+  const today = getToday();
 
-  // The day as one chronological list: time-of-day block, then start time.
   const dueToday = useMemo(
     () =>
       routines
         .filter((r) => isRoutineDueOnDate(r, today, completions))
         .sort((a, b) => {
-          const wa = BLOCK_WEIGHT[blockForRoutine(a)]
-          const wb = BLOCK_WEIGHT[blockForRoutine(b)]
-          if (wa !== wb) return wa - wb
-          return (a.timeRange?.start ?? '99:99').localeCompare(
-            b.timeRange?.start ?? '99:99'
-          )
+          const wa = BLOCK_WEIGHT[blockForRoutine(a)];
+          const wb = BLOCK_WEIGHT[blockForRoutine(b)];
+          if (wa !== wb) return wa - wb;
+          return (a.timeRange?.start ?? "99:99").localeCompare(
+            b.timeRange?.start ?? "99:99",
+          );
         }),
-    [routines, completions, today]
-  )
+    [routines, completions, today],
+  );
 
   const items = dueToday.map((r) => {
-    const maxCount = getMaxCountForRoutine(r)
+    const maxCount = getMaxCountForRoutine(r);
     const count =
-      completions.find((c) => c.routineId === r.id && c.date === today)?.count ?? 0
-    return { routine: r, maxCount, count, done: count >= maxCount }
-  })
+      completions.find((c) => c.routineId === r.id && c.date === today)
+        ?.count ?? 0;
+    return { routine: r, maxCount, count, done: count >= maxCount };
+  });
 
-  const nextId = items.find((i) => !i.done)?.routine.id ?? null
+  const { timed, ongoing } = partitionByTime(items);
+  const nextItem = timed.find((i) => !i.done) ?? null;
 
-  // Identities you're living up to today — meaning first, no points.
-  const identityProgress = useMemo(
-    () =>
-      identities
-        .map((identity) => ({
-          identity,
-          progress: identityTodayProgress(identity.id, routines, completions, today),
-        }))
-        .filter((x) => x.progress.total > 0),
-    [identities, routines, completions, today]
-  )
+  // The user can promote any timeline row to the hero. Default: the next item.
+  const [focusedId, setFocusedId] = useState<string | null>(null);
+  const focused = focusedId
+    ? timed.find((i) => i.routine.id === focusedId)
+    : undefined;
+  const heroItem = focused ?? nextItem;
+  const heroLabel =
+    heroItem && heroItem.routine.id === nextItem?.routine.id ? "Next" : "Focus";
 
-  const reflection = getReflectionForDate(today)
+  // Animate layout changes: the clicked row FLIP-morphs into the big card (and
+  // the old card shrinks back to a row). flushSync applies state inside the
+  // transition; plain update where the API is unsupported.
+  const withTransition = (update: () => void) => {
+    const doc = document as Document & {
+      startViewTransition?: (cb: () => void) => void;
+    };
+    if (doc.startViewTransition) doc.startViewTransition(() => flushSync(update));
+    else update();
+  };
+
+  const focusItem = (id: string) => withTransition(() => setFocusedId(id));
+  const completeHero = (id: string, maxCount: number) =>
+    withTransition(() => {
+      onToggle(id, maxCount);
+      setFocusedId(null);
+    });
+
+  const reflection = getReflectionForDate(today);
+
+  // Identity behind the currently-highlighted (hero) activity — the "why" for it.
+  const heroRoutine = heroItem?.routine;
+  const heroIdentity = heroRoutine?.identityId
+    ? identities.find((i) => i.id === heroRoutine.identityId)
+    : undefined;
+  const heroWhy =
+    heroIdentity?.statement?.trim() ||
+    (heroIdentity ? `Becoming ${heroIdentity.name}` : null);
+
+  const nothingDue = items.length === 0;
 
   return (
-    <div className="space-y-8">
-      {/* 2. Today — focused list. Next action is loud; the rest recedes. */}
-      <section className="space-y-3">
-        <h2 className="text-xs uppercase tracking-wide text-muted-foreground">
-          Today
-        </h2>
-
-        {items.length === 0 ? (
-          <Card className={enter}>
-            <CardContent className="py-8 text-center space-y-1">
-              <p className="text-lg font-medium">Nothing due today.</p>
-              <p className="text-sm text-muted-foreground">Rest easy.</p>
-            </CardContent>
-          </Card>
-        ) : nextId === null ? (
-          <Card className={enter}>
-            <CardContent className="py-8 text-center space-y-1">
-              <p className="text-lg font-medium">You're done for today. 🎉</p>
-              <p className="text-sm text-muted-foreground">
-                Every one of them was a vote for who you're becoming.
-              </p>
-            </CardContent>
-          </Card>
-        ) : (
-          <TodayTimeline
-            items={items}
-            nextId={nextId}
-            onToggle={onToggle}
-            reduced={reduced}
-          />
-        )}
-      </section>
-
-      {/* 3. Progress — a quiet bar, no big numbers. */}
-      {todayStats.total > 0 && (
-        <section className="space-y-1.5">
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <span className="uppercase tracking-wide">Today</span>
-            <span className="tabular-nums">{todayStats.percentage}%</span>
+    <div className="space-y-6">
+      {nothingDue ? (
+        <div className="rounded-2xl border bg-card px-6 py-12 text-center">
+          <p className="text-lg font-medium">Nothing due today.</p>
+          <p className="text-sm text-muted-foreground">Rest easy.</p>
+        </div>
+      ) : (
+        <div className="grid gap-6 lg:grid-cols-3">
+          {/* LEFT — the day's spine */}
+          <div className="space-y-6 lg:col-span-2">
+            {timed.length > 0 && (
+              <TimelineCard
+                items={timed}
+                heroItem={heroItem}
+                heroLabel={heroLabel}
+                onFocus={focusItem}
+                onToggle={onToggle}
+                onHeroToggle={completeHero}
+                onViewFullDay={onViewFullDay}
+              />
+            )}
           </div>
-          <ProgressBar value={todayStats.percentage} />
-        </section>
-      )}
 
-      {/* 4. Identity progress — meaning, not points. */}
-      {identityProgress.length > 0 && (
-        <section className="space-y-4">
-          {identityProgress.map(({ identity, progress }) => (
-            <div key={identity.id} className="space-y-1.5">
-              <div className="flex items-baseline justify-between gap-3">
-                <p className="text-sm font-medium leading-snug">
-                  <span className="mr-1.5">✨</span>
-                  {identity.statement?.trim() || `Becoming ${identity.name}`}
+          {/* RIGHT — anytime, encouragement, reflection */}
+          <div className="space-y-6">
+            {ongoing.length > 0 && (
+              <AnytimeCard
+                items={ongoing}
+                completions={completions}
+                onToggle={onToggle}
+              />
+            )}
+
+            {/* The "why" behind the highlighted activity — its identity. */}
+            <div className="flex items-center gap-4 rounded-2xl border bg-gradient-to-br from-primary/10 to-transparent p-5">
+              <span aria-hidden className="shrink-0 text-5xl">
+                🐹
+              </span>
+              {heroWhy ? (
+                <div className="min-w-0">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Why {heroRoutine?.name}
+                  </p>
+                  <p className="mt-0.5 text-base font-semibold leading-snug">
+                    {heroWhy}
+                  </p>
+                </div>
+              ) : (
+                <p className="text-lg font-semibold leading-snug">
+                  Small steps,
+                  <br />
+                  big changes. <span className="text-primary">♥</span>
                 </p>
-                <span className="text-xs tabular-nums text-muted-foreground shrink-0">
-                  {progress.percentage}% today
-                </span>
-              </div>
-              <ProgressBar value={progress.percentage} />
+              )}
             </div>
-          ))}
-        </section>
+
+            {/* Reflection */}
+            <div className="rounded-2xl border bg-card p-5">
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                How did today feel?
+              </p>
+              <p className="mb-3 text-xs text-muted-foreground">
+                Your reflection helps you grow.
+              </p>
+              <MoodSelector
+                reflection={reflection}
+                onChange={(mood, note) => setReflection(today, mood, note)}
+                hidePrompt
+              />
+            </div>
+          </div>
+        </div>
       )}
-
-      {/* 5. Reflection — one gentle line. */}
-      <section>
-        <MoodSelector
-          reflection={reflection}
-          onChange={(mood, note) => setReflection(today, mood, note)}
-        />
-      </section>
     </div>
-  )
+  );
 }
-
-function ProgressBar({ value }: { value: number }) {
-  return (
-    <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-      <div
-        className="h-full rounded-full bg-primary transition-[width] duration-500"
-        style={{ width: `${Math.min(100, Math.max(0, value))}%` }}
-      />
-    </div>
-  )
-}
-

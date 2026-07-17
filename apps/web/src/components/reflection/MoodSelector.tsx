@@ -5,6 +5,8 @@ import { Input } from '@/components/ui/input'
 interface MoodSelectorProps {
   reflection?: Reflection
   onChange: (mood: Mood, note?: string) => void
+  /** Hide the built-in "How did today feel?" line when the container supplies its own. */
+  hidePrompt?: boolean
 }
 
 const MOODS: { value: Mood; emoji: string; label: string }[] = [
@@ -17,13 +19,13 @@ const MOODS: { value: Mood; emoji: string; label: string }[] = [
  * Gentle daily reflection: how did today feel? Optional note. No pressure —
  * tapping a mood is enough; the note reveals only once a mood is chosen.
  */
-export function MoodSelector({ reflection, onChange }: MoodSelectorProps) {
+export function MoodSelector({ reflection, onChange, hidePrompt }: MoodSelectorProps) {
   const [note, setNote] = useState(reflection?.note ?? '')
   const selected = reflection?.mood
 
   return (
     <div className="space-y-3">
-      <p className="text-sm text-muted-foreground">How did today feel?</p>
+      {!hidePrompt && <p className="text-sm text-muted-foreground">How did today feel?</p>}
       <div className="flex gap-3">
         {MOODS.map((m) => (
           <button

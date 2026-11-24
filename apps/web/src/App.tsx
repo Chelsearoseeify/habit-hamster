@@ -164,6 +164,7 @@ function App() {
               syncing={health.syncing}
               lastResult={health.lastResult}
               onSync={handleHealthSync}
+              onLogWater={health.logWater}
             />
             <NowView
               routines={routines}

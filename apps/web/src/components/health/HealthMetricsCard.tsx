@@ -23,7 +23,10 @@ interface HealthMetricsCardProps {
   syncing: boolean
   lastResult: SyncOutcome | null
   onSync: () => void
+  onLogWater: (ml: number) => void
 }
+
+const WATER_STEPS = [250, 500]
 
 const METRIC_META: Record<
   HealthMetric,
@@ -60,6 +63,7 @@ export function HealthMetricsCard({
   syncing,
   lastResult,
   onSync,
+  onLogWater,
 }: HealthMetricsCardProps) {
   const [sent, setSent] = useState(false)
   const hasData = ORDER.some((m) => todayMetrics[m] !== undefined)
@@ -118,6 +122,25 @@ export function HealthMetricsCard({
             No data yet — tap Sync to pull from Samsung Health.
           </p>
         )}
+        {/* Manual water logging — Samsung Health doesn't export hydration to
+            Health Connect, so log it here. Works even on the plain web build. */}
+        <div className="mt-3 flex items-center gap-2 border-t pt-3">
+          <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Droplet className="h-3.5 w-3.5" />
+            Log water
+          </span>
+          {WATER_STEPS.map((ml) => (
+            <Button
+              key={ml}
+              variant="outline"
+              size="sm"
+              className="h-7 px-2 text-xs"
+              onClick={() => onLogWater(ml)}
+            >
+              +{ml} ml
+            </Button>
+          ))}
+        </div>
         {lastResult && lastResult.completed.length > 0 && (
           <p className="mt-3 text-xs text-primary">
             ✓ Auto-completed {lastResult.completed.length}{' '}

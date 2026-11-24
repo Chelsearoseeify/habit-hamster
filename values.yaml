@@ -1,0 +1,102 @@
+# ui — dev values for the generic insights-service chart (Vivo UI, Next.js).
+# MOCK: infra identifiers (account, ARNs, hosts, Auth0 IDs, keys) are placeholders.
+# Replace the EXAMPLE values from the real ui repo's helm/values-vivo.yaml before use.
+name: ui
+namespace: insights
+replicas: 1
+image:
+  # IMAGE_NAME=insights/ui in the ui repo's .gitlab-ci.yml (not the example-org/insights/<svc> path).
+  repository: 000000000000.dkr.ecr.example-region-1.amazonaws.com/insights/ui
+  # Immutable ${VERSION}-${SHA} tag that docker-build-push publishes on develop.
+  tag: "0.0.0.dev-0000000"
+  pullPolicy: Always
+serviceAccount:
+  create: true
+  name: ui
+service:
+  enabled: true
+  port: 3000
+ingress:
+  enabled: true
+  className: alb
+  host: vivo.dev.example.com
+  annotations:
+    alb.ingress.kubernetes.io/group.name: insights-dev
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80},{"HTTPS":443}]'
+    alb.ingress.kubernetes.io/ssl-redirect: "443"
+    # / redirects to the Auth0 login; probe the unauthenticated health route instead.
+    alb.ingress.kubernetes.io/healthcheck-path: /api/health
+    alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:example-region-1:000000000000:certificate/EXAMPLE-CERTIFICATE-ID
+ports:
+  - name: http
+    containerPort: 3000
+env:
+  PORT: "3000"
+  NODE_ENV: production
+  # Back ends, all in-cluster FQDNs (server-side proxies; no public ALB hop).
+  INSIGHTS_MANAGER_URL: http://insights-manager.extractors.svc.cluster.local:8080
+  INSIGHTS_MANAGER_LEGACY_PATHS: "false"
+  INSTANCE_CATALOG_URL: http://instance-catalog.insights.svc.cluster.local:8080
+  CATALOG_API_URL: http://catalog-api.insights.svc.cluster.local:8080/v1/catalog/graphql
+  DATASOURCE_CONNECTIONS_URL: http://datasource-connections.insights.svc.cluster.local:8080
+  RECOMMENDATIONS_SETTINGS_URL: http://recommendations-settings.insights.svc.cluster.local:8080
+  RECOMMENDATIONS_API_URL: http://recommendations-api.insights.svc.cluster.local:8080
+  # cluster-recommendations: the node-group recommendation, its filters and its
+  # timeseries, through the /api/cluster-recommendations proxy.
+  CLUSTER_RECOMMENDATIONS_URL: http://cluster-recommendations.insights.svc.cluster.local:8080
+  # vcs-integrations: through the /api/vcs-integrations proxy.
+  VCS_INTEGRATIONS_URL: http://vcs-integrations.insights.svc.cluster.local:8080
+  # Auth0 (non-secret values only; the secrets come from externalSecret below and
+  # must not be set here, since an env entry wins over envFrom).
+  AUTH0_DOMAIN: example-tenant.us.auth0.com
+  AUTH0_CLIENT_ID: EXAMPLE_AUTH0_CLIENT_ID
+  # Must match an Auth0 allowed callback URL.
+  APP_BASE_URL: https://vivo.dev.example.com
+  AUTH0_AUDIENCE: https://api.example.com
+  AUTH0_NAMESPACE: https://example.com
+  NEXT_PUBLIC_AUTH0_NAMESPACE: https://example.com
+  AUTH0_MGMT_CLIENT_ID: EXAMPLE_AUTH0_MGMT_CLIENT_ID
+  AUTH0_ROLE_ID_ADMIN: rol_EXAMPLE_ADMIN
+  AUTH0_ROLE_ID_EDITOR: rol_EXAMPLE_EDITOR
+  AUTH0_ROLE_ID_READONLY: rol_EXAMPLE_READONLY
+  # PostHog project key is write-only and public-safe, so it lives here.
+  POSTHOG_KEY: "phc_EXAMPLE_KEY"
+  POSTHOG_HOST: https://eu.i.posthog.com
+  POSTHOG_ENVIRONMENT: vivo
+  # Off: the UI renders customer cluster names, namespaces and costs.
+  POSTHOG_SESSION_REPLAY: "false"
+# Same AWS Secrets Manager sources as the ui repo's chart. The synced Secret is
+# mounted with envFrom, so each secretKey is the env var name.
+externalSecret:
+  enabled: true
+  store: aws-secrets-manager
+  secretName: insights/dev/insights-ui
+  refreshInterval: 1h
+  data:
+    - secretKey: AUTH0_CLIENT_SECRET
+      property: auth0-client-secret
+    - secretKey: AUTH0_SECRET
+      property: auth0-session-secret
+    - secretKey: AUTH0_MGMT_CLIENT_SECRET
+      property: auth0-mgmt-client-secret
+    # Read from datasource-connections' own secret so the two never drift apart.
+    - secretKey: DATASOURCE_CONNECTIONS_INTERNAL_TOKEN
+      key: insights/dev/datasource-connections
+      property: internal-api-token
+# Next.js starts in seconds; the chart's JVM-sized delays are not needed.
+probes:
+  liveness:
+    path: /api/health
+    initialDelaySeconds: 15
+  readiness:
+    path: /api/health
+    initialDelaySeconds: 5
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
